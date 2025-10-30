@@ -1,14 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sparkles, Zap, TrendingUp, Users, Copy, Heart, RefreshCw, Loader2 } from 'lucide-react';
+
+const API_BASE = 'https://incdrops-backend-api.vercel.app';
 
 export default function ContentGenerator({ onNavigate }) {
   const [formData, setFormData] = useState({
     industry: '',
     targetAudience: '',
     services: '',
-    contentType: 'social'
+    contentType: 'social',
   });
-  
+
   const [ideas, setIdeas] = useState([]);
   const [loading, setLoading] = useState(false);
   const [usageCount, setUsageCount] = useState(0);
@@ -19,83 +21,56 @@ export default function ContentGenerator({ onNavigate }) {
     { id: 'social', name: 'Social Posts', icon: Sparkles },
     { id: 'blog', name: 'Blog Ideas', icon: Zap },
     { id: 'ads', name: 'Ad Copy', icon: TrendingUp },
-    { id: 'email', name: 'Email Campaigns', icon: Users }
+    { id: 'email', name: 'Email Campaigns', icon: Users },
   ];
 
   const handleInputChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const callGeminiAPI = async (formData) => {
-    // Note: In your actual app file, change this line to:
-    // const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-    const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-    
-    if (!GEMINI_API_KEY) {
-      console.log('Preview mode - API key will be loaded from .env.local in your actual app');
-      return {
-        success: false,
-        error: 'This is just a preview. The real app will use your API key.'
-      };
-    }
-    
-    const MODEL = 'gemini-2.0-flash-exp';
-    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
-    const { industry, targetAudience, services, contentType } = formData;
+  // ---- Backend call (POST /api/ideas) ----
+  const resp = await fetch("/api/ideas", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(formData),
+});
 
-    const prompt = `Generate 10 ${contentType} content ideas for a ${industry} business targeting ${targetAudience}. ${services ? `Products/services: ${services}` : ''} Return ONLY a valid JSON array: [{"id":1,"title":"...","description":"...","platforms":["..."],"hashtags":["#..."]}] Keep titles under 50 chars, descriptions under 150 chars.`;
-
-    try {
-      const response = await fetch(`${API_URL}?key=${GEMINI_API_KEY}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { maxOutputTokens: 750, temperature: 0.8 }
-        })
-      });
-
-      if (!response.ok) throw new Error(`API Error: ${response.status}`);
-      const data = await response.json();
-      const text = data.candidates[0].content.parts[0].text;
-      const cleaned = text.replace(/```json\n?|\n?```/g, '').trim();
-      const ideas = JSON.parse(cleaned);
-      return { success: true, ideas };
-    } catch (error) {
-      return { success: false, error: error.message };
+      if (!resp.ok) {
+        const text = await resp.text().catch(() => '');
+        throw new Error(`API ${resp.status}: ${text || 'Ideas endpoint error'}`);
+      }
+      const data = await resp.json();
+      return { success: true, ideas: Array.isArray(data?.ideas) ? data.ideas : [] };
+    } catch (err) {
+      console.error('Ideas API error:', err);
+      return { success: false, error: err.message || 'Failed to generate ideas' };
     }
   };
 
   const generateIdeas = async () => {
     if (usageCount >= maxFreeIdeas) {
-      alert('You\'ve reached your free tier limit! Sign up to continue generating ideas.');
+      alert("You've reached your free tier limit! Sign up to continue generating ideas.");
       return;
     }
-
     if (!formData.industry || !formData.targetAudience) {
       alert('Please fill in at least your industry and target audience');
       return;
     }
 
     setLoading(true);
-
     try {
-      const result = await callGeminiAPI(formData);
-      
+      const result = await callIdeasAPI(formData);
       if (result.success) {
         setIdeas(result.ideas);
         const newCount = usageCount + 1;
         setUsageCount(newCount);
-        localStorage.setItem('incdrops_usage', newCount.toString());
+        localStorage.setItem('incdrops_usage', String(newCount));
       } else {
-        alert('Failed to generate ideas. Please check your API key and try again.');
+        alert('Failed to generate ideas. Please try again in a moment.');
         console.error(result.error);
       }
-    } catch (error) {
-      console.error('Error generating ideas:', error);
+    } catch (e) {
+      console.error('Error generating ideas:', e);
       alert('Something went wrong. Please try again.');
     } finally {
       setLoading(false);
@@ -103,7 +78,7 @@ export default function ContentGenerator({ onNavigate }) {
   };
 
   const saveIdea = (idea) => {
-    if (!savedIdeas.find(saved => saved.id === idea.id)) {
+    if (!savedIdeas.find((s) => s.id === idea.id)) {
       setSavedIdeas([...savedIdeas, idea]);
       alert('Idea saved!');
     }
@@ -114,26 +89,30 @@ export default function ContentGenerator({ onNavigate }) {
     alert('Copied to clipboard!');
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     const stored = localStorage.getItem('incdrops_usage');
-    if (stored) setUsageCount(parseInt(stored));
+    if (stored) setUsageCount(parseInt(stored, 10));
   }, []);
 
   return (
     <div className="min-h-screen bg-black text-white">
       {/* Background Grid */}
       <div className="fixed inset-0 opacity-10 pointer-events-none">
-        <div className="absolute inset-0" style={{
-          backgroundImage: 'linear-gradient(#666 1px, transparent 1px), linear-gradient(90deg, #666 1px, transparent 1px)',
-          backgroundSize: '50px 50px'
-        }} />
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage:
+              'linear-gradient(#666 1px, transparent 1px), linear-gradient(90deg, #666 1px, transparent 1px)',
+            backgroundSize: '50px 50px',
+          }}
+        />
       </div>
 
       {/* Header */}
       <div className="relative border-b border-gray-800 bg-black/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <button 
+            <button
               onClick={() => onNavigate('landing')}
               className="text-gray-400 hover:text-gray-200 transition-colors"
               title="Back to Home"
@@ -147,7 +126,9 @@ export default function ContentGenerator({ onNavigate }) {
           <div className="flex items-center space-x-6">
             <div className="text-sm">
               <span className="text-gray-400">Free Tier: </span>
-              <span className="text-gray-200 font-semibold">{usageCount}/{maxFreeIdeas} ideas used</span>
+              <span className="text-gray-200 font-semibold">
+                {usageCount}/{maxFreeIdeas} ideas used
+              </span>
             </div>
             <button className="px-6 py-2 bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 rounded-lg font-semibold transition-all duration-300">
               Upgrade
@@ -162,12 +143,10 @@ export default function ContentGenerator({ onNavigate }) {
           <div className="lg:col-span-1">
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 sticky top-6">
               <h2 className="text-2xl font-bold mb-6 text-gray-100">Your Business</h2>
-              
+
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Industry *
-                  </label>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Industry *</label>
                   <input
                     type="text"
                     name="industry"
@@ -193,9 +172,7 @@ export default function ContentGenerator({ onNavigate }) {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Services/Products
-                  </label>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Services/Products</label>
                   <textarea
                     name="services"
                     value={formData.services}
@@ -207,9 +184,7 @@ export default function ContentGenerator({ onNavigate }) {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-3">
-                    Content Type
-                  </label>
+                  <label className="block text-sm font-medium text-gray-300 mb-3">Content Type</label>
                   <div className="grid grid-cols-2 gap-2">
                     {contentTypes.map((type) => (
                       <button
@@ -260,10 +235,9 @@ export default function ContentGenerator({ onNavigate }) {
             <div className="mb-6">
               <h2 className="text-3xl font-bold text-gray-100">Generated Ideas</h2>
               <p className="text-gray-400 mt-2">
-                {ideas.length === 0 
+                {ideas.length === 0
                   ? 'Fill out the form and click Generate to see your content ideas'
-                  : `${ideas.length} ideas generated`
-                }
+                  : `${ideas.length} ideas generated`}
               </p>
             </div>
 
@@ -274,57 +248,60 @@ export default function ContentGenerator({ onNavigate }) {
               </div>
             ) : (
               <div className="space-y-4">
-                {ideas.map((idea) => (
-                  <div
-                    key={idea.id}
-                    className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-6 hover:bg-white/10 hover:border-white/20 transition-all duration-300"
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <h3 className="text-xl font-bold text-gray-100">{idea.title}</h3>
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => saveIdea(idea)}
-                          className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                          title="Save idea"
-                        >
-                          <Heart size={18} className="text-gray-400 hover:text-red-400" />
-                        </button>
-                        <button
-                          onClick={() => copyToClipboard(`${idea.title}\n\n${idea.description}`)}
-                          className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                          title="Copy to clipboard"
-                        >
-                          <Copy size={18} className="text-gray-400 hover:text-gray-200" />
-                        </button>
+                {ideas.map((idea) => {
+                  const platforms = Array.isArray(idea.platforms) ? idea.platforms : [];
+                  const hashtags = Array.isArray(idea.hashtags) ? idea.hashtags : [];
+                  return (
+                    <div
+                      key={idea.id}
+                      className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-6 hover:bg-white/10 hover:border-white/20 transition-all duration-300"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <h3 className="text-xl font-bold text-gray-100">{idea.title}</h3>
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => saveIdea(idea)}
+                            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                            title="Save idea"
+                          >
+                            <Heart size={18} className="text-gray-400 hover:text-red-400" />
+                          </button>
+                          <button
+                            onClick={() =>
+                              copyToClipboard(`${idea.title}\n\n${idea.description}`)
+                            }
+                            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                            title="Copy to clipboard"
+                          >
+                            <Copy size={18} className="text-gray-400 hover:text-gray-200" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <p className="text-gray-300 mb-4">{idea.description}</p>
+
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        <span className="text-xs text-gray-400 font-semibold">Platforms:</span>
+                        {platforms.map((platform, i) => (
+                          <span
+                            key={i}
+                            className="px-3 py-1 bg-white/10 rounded-full text-xs text-gray-300"
+                          >
+                            {platform}
+                          </span>
+                        ))}
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        {hashtags.map((tag, i) => (
+                          <span key={i} className="text-sm text-blue-400">
+                            {tag}
+                          </span>
+                        ))}
                       </div>
                     </div>
-                    
-                    <p className="text-gray-300 mb-4">{idea.description}</p>
-                    
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      <span className="text-xs text-gray-400 font-semibold">Platforms:</span>
-                      {idea.platforms.map((platform, i) => (
-                        <span
-                          key={i}
-                          className="px-3 py-1 bg-white/10 rounded-full text-xs text-gray-300"
-                        >
-                          {platform}
-                        </span>
-                      ))}
-                    </div>
-                    
-                    <div className="flex flex-wrap gap-2">
-                      {idea.hashtags.map((tag, i) => (
-                        <span
-                          key={i}
-                          className="text-sm text-blue-400"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
 
                 <button
                   onClick={generateIdeas}
