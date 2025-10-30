@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Sparkles, Zap, TrendingUp, Users, ArrowRight, Check, Target, Rocket, Shield, Clock, Layers, Twitter, Github, Linkedin } from 'lucide-react';
 
-export default function IncDropsLanding() {
+export default function IncDropsLanding({ onNavigate }) {
   const [scrollY, setScrollY] = useState(0);
   const [visibleSections, setVisibleSections] = useState(new Set());
   const sectionRefs = useRef([]);
@@ -99,22 +99,49 @@ export default function IncDropsLanding() {
           </div>
 
           <div className="hidden md:flex items-center space-x-8">
-            <a href="#features" className="text-gray-300 hover:text-white transition-colors duration-200">
+            <a 
+              href="#features" 
+              onClick={(e) => {
+                e.preventDefault();
+                document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className="text-gray-300 hover:text-white transition-colors duration-200"
+            >
               Features
             </a>
-            <a href="#pricing" className="text-gray-300 hover:text-white transition-colors duration-200">
+            <a 
+              href="#pricing" 
+              onClick={(e) => {
+                e.preventDefault();
+                document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className="text-gray-300 hover:text-white transition-colors duration-200"
+            >
               Pricing
             </a>
-            <a href="#industries" className="text-gray-300 hover:text-white transition-colors duration-200">
+            <a 
+              href="#industries" 
+              onClick={(e) => {
+                e.preventDefault();
+                document.getElementById('industries')?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className="text-gray-300 hover:text-white transition-colors duration-200"
+            >
               Industries
             </a>
           </div>
 
           <div className="flex items-center space-x-4">
-            <button className="hidden sm:block px-6 py-2 text-gray-300 hover:text-white transition-colors duration-200">
+            <button 
+              onClick={() => onNavigate('generator')}
+              className="hidden sm:block px-6 py-2 text-gray-300 hover:text-white transition-colors duration-200"
+            >
               Log In
             </button>
-            <button className="px-6 py-2 bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 rounded-lg font-semibold transition-all duration-300 shadow-lg shadow-gray-900/50 hover:scale-105">
+            <button 
+              onClick={() => onNavigate('generator')}
+              className="px-6 py-2 bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 rounded-lg font-semibold transition-all duration-300 shadow-lg shadow-gray-900/50 hover:scale-105"
+            >
               Get Started
             </button>
           </div>
@@ -156,7 +183,10 @@ export default function IncDropsLanding() {
               your content calendar fills itself.
             </p>
             
-            <button className="group px-8 py-4 bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 rounded-lg text-lg font-semibold transition-all duration-300 shadow-lg shadow-gray-900/50 hover:shadow-xl hover:shadow-gray-800/50 hover:scale-105">
+            <button 
+              onClick={() => onNavigate('generator')}
+              className="group px-8 py-4 bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 rounded-lg text-lg font-semibold transition-all duration-300 shadow-lg shadow-gray-900/50 hover:shadow-xl hover:shadow-gray-800/50 hover:scale-105"
+            >
               Start Generating Ideas
               <ArrowRight className="inline-block ml-2 group-hover:translate-x-1 transition-transform" size={20} />
             </button>
@@ -185,30 +215,16 @@ export default function IncDropsLanding() {
         
         <div className="relative overflow-hidden">
           <div 
-            className="flex gap-8 animate-scroll-horizontal touch-pan-x"
+            className="flex gap-8 animate-scroll-horizontal"
             style={{ 
-              overflowX: 'auto',
-              scrollSnapType: 'x mandatory',
-              WebkitOverflowScrolling: 'touch',
-              scrollbarWidth: 'none',
-              msOverflowStyle: 'none'
-            }}
-            onTouchStart={(e) => {
-              const container = e.currentTarget;
-              container.style.animationPlayState = 'paused';
-            }}
-            onTouchEnd={(e) => {
-              const container = e.currentTarget;
-              setTimeout(() => {
-                container.style.animationPlayState = 'running';
-              }, 3000);
+              paddingLeft: '24px',
+              paddingRight: '24px'
             }}
           >
-            {[...contentTypes, ...contentTypes].map((item, i) => (
+            {[...contentTypes, ...contentTypes, ...contentTypes].map((item, i) => (
               <div 
                 key={i}
                 className="min-w-[500px] h-[450px] bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-10 hover:bg-white/10 hover:border-white/20 transition-all duration-300 hover:scale-105 flex flex-col items-start justify-between flex-shrink-0"
-                style={{ scrollSnapAlign: 'start' }}
               >
                 <div>
                   <div className="w-20 h-20 bg-gradient-to-br from-gray-400/20 to-gray-600/20 backdrop-blur-lg rounded-xl flex items-center justify-center mb-8 border border-white/10">
@@ -335,7 +351,10 @@ export default function IncDropsLanding() {
                   <span>Community support</span>
                 </li>
               </ul>
-              <button className="w-full py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-lg font-semibold transition-all duration-300">
+              <button 
+                onClick={() => onNavigate('generator')}
+                className="w-full py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-lg font-semibold transition-all duration-300"
+              >
                 Get Started
               </button>
             </div>
@@ -371,7 +390,10 @@ export default function IncDropsLanding() {
                   <span>Email support</span>
                 </li>
               </ul>
-              <button className="w-full py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-lg font-semibold transition-all duration-300">
+              <button 
+                onClick={() => onNavigate('generator')}
+                className="w-full py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-lg font-semibold transition-all duration-300"
+              >
                 Start Basic
               </button>
             </div>
@@ -414,7 +436,10 @@ export default function IncDropsLanding() {
                   <span>Analytics dashboard</span>
                 </li>
               </ul>
-              <button className="w-full py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-lg font-semibold transition-all duration-300">
+              <button 
+                onClick={() => onNavigate('generator')}
+                className="w-full py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-lg font-semibold transition-all duration-300"
+              >
                 Start Pro
               </button>
             </div>
@@ -472,7 +497,10 @@ export default function IncDropsLanding() {
             Join thousands of creators who never worry about what to post
           </p>
           <div className="flex flex-col sm:flex-row gap-6 justify-center">
-            <button className="px-10 py-5 bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 rounded-xl text-xl font-semibold transition-all duration-300 shadow-2xl shadow-gray-900/50 hover:shadow-gray-800/50 hover:scale-105">
+            <button 
+              onClick={() => onNavigate('generator')}
+              className="px-10 py-5 bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 rounded-xl text-xl font-semibold transition-all duration-300 shadow-2xl shadow-gray-900/50 hover:shadow-gray-800/50 hover:scale-105"
+            >
               Start Free Trial
             </button>
             <button className="px-10 py-5 border-2 border-gray-700 hover:border-gray-500 rounded-xl text-xl font-semibold transition-all duration-300 hover:bg-gray-900">

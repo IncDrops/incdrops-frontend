@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Sparkles, Zap, TrendingUp, Users, Copy, Heart, RefreshCw, Loader2 } from 'lucide-react';
 
-export default function ContentGenerator() {
+export default function ContentGenerator({ onNavigate }) {
   const [formData, setFormData] = useState({
     industry: '',
     targetAudience: '',
@@ -30,86 +30,42 @@ export default function ContentGenerator() {
   };
 
   const callGeminiAPI = async (formData) => {
-    // API key will be loaded from environment in your actual app
-    // For artifact preview, this will just return a placeholder
-    const GEMINI_API_KEY = '';
-    const MODEL = 'gemini-2.0-flash-exp';
-    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
-
+    // Note: In your actual app file, change this line to:
+    // const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+    const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+    
     if (!GEMINI_API_KEY) {
-      console.log('Note: API key will be loaded from .env.local in your actual app');
+      console.log('Preview mode - API key will be loaded from .env.local in your actual app');
       return {
         success: false,
-        error: 'This is just a preview. Copy to your project to use with real API key.'
+        error: 'This is just a preview. The real app will use your API key.'
       };
     }
-
+    
+    const MODEL = 'gemini-2.0-flash-exp';
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
     const { industry, targetAudience, services, contentType } = formData;
 
-    const prompt = `You are a professional content strategist. Generate 10 ${contentType} content ideas for a ${industry} business that targets ${targetAudience}.
-${services ? `Their products/services include: ${services}` : ''}
-
-For each idea, provide:
-- title (max 50 characters)
-- description (max 150 characters) 
-- platforms (array of 2-3 social platforms)
-- hashtags (array of 3-5 relevant hashtags with # symbol)
-
-Return ONLY a valid JSON array with this exact structure:
-[
-  {
-    "id": 1,
-    "title": "...",
-    "description": "...",
-    "platforms": ["...", "..."],
-    "hashtags": ["#...", "#..."]
-  }
-]
-
-Make ideas specific, actionable, and engaging. Keep total response under 750 tokens.`;
+    const prompt = `Generate 10 ${contentType} content ideas for a ${industry} business targeting ${targetAudience}. ${services ? `Products/services: ${services}` : ''} Return ONLY a valid JSON array: [{"id":1,"title":"...","description":"...","platforms":["..."],"hashtags":["#..."]}] Keep titles under 50 chars, descriptions under 150 chars.`;
 
     try {
       const response = await fetch(`${API_URL}?key=${GEMINI_API_KEY}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: prompt
-            }]
-          }],
-          generationConfig: {
-            maxOutputTokens: 750,
-            temperature: 0.8,
-            topP: 0.95,
-          }
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { maxOutputTokens: 750, temperature: 0.8 }
         })
       });
 
-      if (!response.ok) {
-        throw new Error(`API Error: ${response.status}`);
-      }
-
+      if (!response.ok) throw new Error(`API Error: ${response.status}`);
       const data = await response.json();
-      
-      // Extract the text from Gemini's response
-      const generatedText = data.candidates[0].content.parts[0].text;
-      
-      // Parse the JSON from the response
-      // Remove markdown code blocks if present
-      const cleanedText = generatedText.replace(/```json\n?|\n?```/g, '').trim();
-      const ideas = JSON.parse(cleanedText);
-      
+      const text = data.candidates[0].content.parts[0].text;
+      const cleaned = text.replace(/```json\n?|\n?```/g, '').trim();
+      const ideas = JSON.parse(cleaned);
       return { success: true, ideas };
-      
     } catch (error) {
-      console.error('Gemini API Error:', error);
-      return { 
-        success: false, 
-        error: error.message || 'Failed to generate ideas' 
-      };
+      return { success: false, error: error.message };
     }
   };
 
@@ -158,7 +114,6 @@ Make ideas specific, actionable, and engaging. Keep total response under 750 tok
     alert('Copied to clipboard!');
   };
 
-  // Load usage from localStorage on mount
   React.useEffect(() => {
     const stored = localStorage.getItem('incdrops_usage');
     if (stored) setUsageCount(parseInt(stored));
@@ -177,9 +132,18 @@ Make ideas specific, actionable, and engaging. Keep total response under 750 tok
       {/* Header */}
       <div className="relative border-b border-gray-800 bg-black/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-300 via-gray-100 to-gray-400 bg-clip-text text-transparent">
-            IncDrops Generator
-          </h1>
+          <div className="flex items-center space-x-4">
+            <button 
+              onClick={() => onNavigate('landing')}
+              className="text-gray-400 hover:text-gray-200 transition-colors"
+              title="Back to Home"
+            >
+              ← Back
+            </button>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-300 via-gray-100 to-gray-400 bg-clip-text text-transparent">
+              IncDrops Generator
+            </h1>
+          </div>
           <div className="flex items-center space-x-6">
             <div className="text-sm">
               <span className="text-gray-400">Free Tier: </span>
