@@ -180,15 +180,35 @@ export default function IncDropsLanding() {
           <h2 className="text-5xl font-bold mb-4 bg-gradient-to-r from-gray-200 to-gray-400 bg-clip-text text-transparent">
             Every Type of Content
           </h2>
-          <p className="text-xl text-gray-400">Watch them flow →</p>
+          <p className="text-xl text-gray-400">Watch them flow → <span className="md:hidden text-sm">(or swipe)</span></p>
         </div>
         
         <div className="relative overflow-hidden">
-          <div className="flex gap-8 animate-scroll-horizontal">
+          <div 
+            className="flex gap-8 animate-scroll-horizontal touch-pan-x"
+            style={{ 
+              overflowX: 'auto',
+              scrollSnapType: 'x mandatory',
+              WebkitOverflowScrolling: 'touch',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none'
+            }}
+            onTouchStart={(e) => {
+              const container = e.currentTarget;
+              container.style.animationPlayState = 'paused';
+            }}
+            onTouchEnd={(e) => {
+              const container = e.currentTarget;
+              setTimeout(() => {
+                container.style.animationPlayState = 'running';
+              }, 3000);
+            }}
+          >
             {[...contentTypes, ...contentTypes].map((item, i) => (
               <div 
                 key={i}
-                className="min-w-[500px] h-[450px] bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-10 hover:bg-white/10 hover:border-white/20 transition-all duration-300 hover:scale-105 flex flex-col items-start justify-between"
+                className="min-w-[500px] h-[450px] bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-10 hover:bg-white/10 hover:border-white/20 transition-all duration-300 hover:scale-105 flex flex-col items-start justify-between flex-shrink-0"
+                style={{ scrollSnapAlign: 'start' }}
               >
                 <div>
                   <div className="w-20 h-20 bg-gradient-to-br from-gray-400/20 to-gray-600/20 backdrop-blur-lg rounded-xl flex items-center justify-center mb-8 border border-white/10">
