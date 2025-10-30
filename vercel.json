@@ -1,15 +1,7 @@
 {
-  "builds": [
-    {
-      "src": "frontend/package.json",
-      "use": "@vercel/static-build",
-      "config": { "distDir": "frontend/dist" }
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "frontend/dist/index.html"
-    }
+  "version": 2,
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "https://incdrops-backend.vercel.app/api/$1" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
