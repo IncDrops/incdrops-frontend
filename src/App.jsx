@@ -12,26 +12,12 @@ export default function App() {
 
   return (
     <div className="relative">
-      {/* Page Switcher - Only show on landing page for dev */}
+      {/* Minimal dev switcher: only show a single button on landing */}
       {page === 'landing' && (
-        <div className="fixed top-4 right-4 z-[100] flex space-x-2">
-          <button 
-            onClick={() => handleNavigate('landing')}
-            className={`px-6 py-3 rounded-lg font-semibold transition-all ${
-              page === 'landing' 
-                ? 'bg-white text-black' 
-                : 'bg-gray-700 text-white hover:bg-gray-600'
-            }`}
-          >
-            Landing
-          </button>
-          <button 
+        <div className="fixed top-4 right-4 z-[100]">
+          <button
             onClick={() => handleNavigate('generator')}
-            className={`px-6 py-3 rounded-lg font-semibold transition-all ${
-              page === 'generator' 
-                ? 'bg-white text-black' 
-                : 'bg-gray-700 text-white hover:bg-gray-600'
-            }`}
+            className="px-6 py-3 rounded-lg font-semibold transition-all bg-gray-700 text-white hover:bg-gray-600 shadow-lg"
           >
             Generator
           </button>
