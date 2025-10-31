@@ -6,7 +6,7 @@ export default function IncDropsLanding({ onNavigate }) {
   const [visibleSections, setVisibleSections] = useState(new Set());
   const sectionRefs = useRef([]);
 
-  // --- NEW: carousel refs/state ---
+  // --- carousel refs/state ---
   const trackRef = useRef(null);
   const frameRef = useRef(null);
   const isHovering = useRef(false);
@@ -56,7 +56,7 @@ export default function IncDropsLanding({ onNavigate }) {
     { icon: Layers, title: "Team collaboration", desc: "Work together efficiently" }
   ];
 
-  // --- NEW: auto-scroll loop with seamless reset ---
+  // --- auto-scroll loop with seamless reset ---
   useEffect(() => {
     const el = trackRef.current;
     if (!el) return;
@@ -86,17 +86,17 @@ export default function IncDropsLanding({ onNavigate }) {
     return () => cancelAnimationFrame(frameRef.current);
   }, [canScroll]);
 
-  // --- NEW: hover to pause ---
+  // --- hover to pause ---
   const onMouseEnter = () => { isHovering.current = true; setCanScroll(false); };
   const onMouseLeave = () => { isHovering.current = false; setCanScroll(true); };
 
-  // --- NEW: drag/swipe handlers (pointer events unify mouse & touch) ---
+  // --- UPDATED: drag/swipe handlers (pointer events) ---
   const onPointerDown = (e) => {
     const el = trackRef.current;
     if (!el) return;
     isDragging.current = true;
     setCanScroll(false);
-    dragStartX.current = e.clientX ?? e.touches?.[0]?.clientX ?? 0;
+    dragStartX.current = e.clientX; // Simplified: No e.touches needed
     startScrollLeft.current = el.scrollLeft;
     el.setPointerCapture?.(e.pointerId);
   };
@@ -104,7 +104,8 @@ export default function IncDropsLanding({ onNavigate }) {
   const onPointerMove = (e) => {
     if (!isDragging.current) return;
     const el = trackRef.current;
-    const x = e.clientX ?? e.touches?.[0]?.clientX ?? 0;
+    if (!el) return;
+    const x = e.clientX; // Simplified: No e.touches needed
     const dx = x - dragStartX.current;
     el.scrollLeft = startScrollLeft.current - dx;
 
@@ -119,10 +120,10 @@ export default function IncDropsLanding({ onNavigate }) {
     isDragging.current = false;
     setCanScroll(!isHovering.current);
     const el = trackRef.current;
-    el.releasePointerCapture?.(e.pointerId);
+    el?.releasePointerCapture?.(e.pointerId);
   };
 
-  // --- NEW: click arrows on desktop ---
+  // --- click arrows on desktop ---
   const cardWidth = 520; // matches min-w card + gap
   const nudge = (dir = 1) => {
     const el = trackRef.current;
@@ -176,7 +177,6 @@ export default function IncDropsLanding({ onNavigate }) {
             </h2>
           </div>
 
-          {/* Removed the extra 'Log In' button to avoid clutter/overlap */}
           <div className="hidden md:flex items-center space-x-8">
             <a 
               href="#features" 
@@ -254,7 +254,7 @@ export default function IncDropsLanding({ onNavigate }) {
         </div>
       </section>
 
-      {/* Every Type of Content — NEW Carousel */}
+      {/* Every Type of Content — Carousel */}
       <section 
         id="features"
         ref={el => sectionRefs.current[0] = el}
@@ -290,9 +290,13 @@ export default function IncDropsLanding({ onNavigate }) {
           <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-black to-transparent z-10" />
           <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-black to-transparent z-10" />
 
+          {/* FIX 1: Added 'touch-action-pan-y' to className.
+            This tells mobile browsers to allow vertical page scrolling (pan-y) 
+            but to let our JavaScript handle horizontal movement.
+          */}
           <div
             ref={trackRef}
-            className="overflow-hidden px-6 select-none"
+            className="overflow-hidden px-6 select-none touch-action-pan-y"
             onMouseEnter={onMouseEnter}
             onMouseLeave={onMouseLeave}
             onPointerDown={onPointerDown}

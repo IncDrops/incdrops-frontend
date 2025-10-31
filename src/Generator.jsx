@@ -1,5 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { Sparkles, Zap, TrendingUp, Users, Copy, Heart, RefreshCw, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Sparkles, Zap, TrendingUp, Users, Copy, Heart, RefreshCw, Loader2, FileDown } from 'lucide-react';
+
+// NEW: Import libraries for exporting
+import { CSVLink } from 'react-csv';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 export default function ContentGenerator({ onNavigate }) {
   const [formData, setFormData] = useState({
@@ -28,11 +33,18 @@ export default function ContentGenerator({ onNavigate }) {
 
   const callGeminiAPI = async (formData) => {
     const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-    const MODEL = 'gemini-2.0-flash-exp';
+
+    // Gemini 2.0 Flash model
+    const MODEL = 'gemini-2.0-flash';
     const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
     const { industry, targetAudience, services, contentType } = formData;
 
-    const prompt = `Generate 10 ${contentType} content ideas for a ${industry} business targeting ${targetAudience}. ${services ? `Products/services: ${services}` : ''} Return ONLY a valid JSON array: [{"id":1,"title":"...","description":"...","platforms":["..."],"hashtags":["#..."]}] Keep titles under 50 chars, descriptions under 150 chars.`;
+    const prompt = `Generate 10 ${contentType} content ideas for a ${industry} business targeting ${targetAudience}. ${services ? `They offer: ${services}` : ''}
+
+Format each idea EXACTLY like this (one per line):
+TITLE: [short title] | DESC: [brief description] | PLATFORMS: [platform1, platform2] | TAGS: [#tag1, #tag2, #tag3]
+
+Generate 10 ideas in this format. Keep titles under 50 characters and descriptions under 150 characters.`;
 
     try {
       const response = await fetch(`${API_URL}?key=${GEMINI_API_KEY}`, {
@@ -40,23 +52,46 @@ export default function ContentGenerator({ onNavigate }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { maxOutputTokens: 750, temperature: 0.8 }
+          generationConfig: { 
+            maxOutputTokens: 2000,
+            temperature: 0.7
+          }
         })
       });
 
       if (!response.ok) throw new Error(`API Error: ${response.status}`);
       
       const data = await response.json();
-      const text = data.candidates[0].content.parts[0].text;
-      const cleaned = text.replace(/```json\n?|\n?```/g, '').trim();
-      const ideas = JSON.parse(cleaned);
+      let text = data.candidates[0].content.parts[0].text;
+      
+      console.log('Raw response:', text);
+      
+      // Parse the plain text format into JSON
+      const lines = text.split('\n').filter(line => line.includes('TITLE:'));
+      
+      const ideas = lines.map((line, index) => {
+        const titleMatch = line.match(/TITLE:\s*(.+?)\s*\|/);
+        const descMatch = line.match(/DESC:\s*(.+?)\s*\|/);
+        const platformsMatch = line.match(/PLATFORMS:\s*(.+?)\s*\|/);
+        const tagsMatch = line.match(/TAGS:\s*(.+?)$/);
+        
+        return {
+          id: index + 1,
+          title: titleMatch ? titleMatch[1].trim() : `Idea ${index + 1}`,
+          description: descMatch ? descMatch[1].trim() : 'Content idea description',
+          platforms: platformsMatch ? platformsMatch[1].split(',').map(p => p.trim()) : ['Social Media'],
+          hashtags: tagsMatch ? tagsMatch[1].split(',').map(t => t.trim()) : ['#content']
+        };
+      }).slice(0, 10);
       
       return { success: true, ideas };
+      
     } catch (error) {
       console.error('Gemini API Error:', error);
       return { success: false, error: error.message };
     }
   };
+
 
   const generateIdeas = async () => {
     if (usageCount >= maxFreeIdeas) {
@@ -104,6 +139,67 @@ export default function ContentGenerator({ onNavigate }) {
     const stored = localStorage.getItem('incdrops_usage');
     if (stored) setUsageCount(parseInt(stored, 10));
   }, []);
+
+  // --- NEW: CSV Export Logic ---
+  // Prepare headers and data for react-csv
+  const csvHeaders = [
+    { label: "Title", key: "title" },
+    { label: "Description", key: "description" },
+    { label: "Platforms", key: "platforms" },
+    { label: "Hashtags", key: "hashtags" }
+  ];
+
+  // Memoize data to prevent re-computation on every render
+  const csvData = useMemo(() => {
+    return ideas.map(idea => ({
+      title: idea.title,
+      description: idea.description,
+      platforms: idea.platforms.join(', '), // Join arrays into a string
+      hashtags: idea.hashtags.join(', ')   // Join arrays into a string
+    }));
+  }, [ideas]);
+
+  // --- NEW: PDF Export Logic ---
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    
+    // Add a title to the PDF
+    doc.text("IncDrops - Generated Content Ideas", 14, 20);
+    
+    // Define columns and rows for the table
+    const tableColumn = ["Title", "Description", "Platforms", "Hashtags"];
+    const tableRows = [];
+
+    // Map ideas data to rows
+    ideas.forEach(idea => {
+      const ideaData = [
+        idea.title,
+        idea.description,
+        idea.platforms.join(', '), // Join arrays
+        idea.hashtags.join(', ')  // Join arrays
+      ];
+      tableRows.push(ideaData);
+    });
+
+    // Add table to PDF
+    doc.autoTable({
+      head: [tableColumn],
+      body: tableRows,
+      startY: 25, // Start table below the title
+      theme: 'grid',
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [22, 22, 22] }, // Dark header
+      columnStyles: {
+        0: { cellWidth: 30 }, // Title
+        1: { cellWidth: 'auto' }, // Description
+        2: { cellWidth: 30 }, // Platforms
+        3: { cellWidth: 30 }  // Hashtags
+      }
+    });
+
+    // Save the PDF
+    doc.save("incdrops-ideas.pdf");
+  };
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -252,6 +348,32 @@ export default function ContentGenerator({ onNavigate }) {
               </p>
             </div>
 
+            {/* --- NEW: Export Buttons Section --- */}
+            {ideas.length > 0 && (
+              <div className="flex flex-wrap gap-3 mb-6">
+                <span className="py-2 text-sm text-gray-400">Export:</span>
+                {/* CSV Download Button */}
+                <CSVLink
+                  data={csvData}
+                  headers={csvHeaders}
+                  filename="incdrops-ideas.csv"
+                  className="flex items-center space-x-2 px-4 py-2 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 rounded-lg text-sm font-medium text-gray-300 transition-colors"
+                >
+                  <FileDown size={16} />
+                  <span>CSV</span>
+                </CSVLink>
+
+                {/* PDF Download Button */}
+                <button
+                  onClick={handleExportPDF}
+                  className="flex items-center space-x-2 px-4 py-2 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 rounded-lg text-sm font-medium text-gray-300 transition-colors"
+                >
+                  <FileDown size={16} />
+                  <span>PDF</span>
+                </button>
+              </div>
+            )}
+
             {ideas.length === 0 ? (
               <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-12 text-center">
                 <Sparkles size={48} className="mx-auto mb-4 text-gray-500" />
@@ -265,7 +387,7 @@ export default function ContentGenerator({ onNavigate }) {
                   return (
                     <div
                       key={idea.id}
-                      className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-6 hover:bg-white/10 hover:border-white/20 transition-all duration-300"
+                      className="bg-white/5 backdrop-blur-xl border border-white/1M0 rounded-xl p-6 hover:bg-white/10 hover:border-white/20 transition-all duration-300"
                     >
                       <div className="flex items-start justify-between mb-3">
                         <h3 className="text-xl font-bold text-gray-100">{idea.title}</h3>
