@@ -36,7 +36,7 @@ export default function ContentGenerator({ onNavigate }) {
   const callGeminiAPI = async (formData) => {
     // Note: In production, the API key should be stored securely on a backend
     // For this demo, you'll need to add your key here or set it up properly
-    const GEMINI_API_KEY = 'YOUR_API_KEY_HERE'; // Replace with your actual key
+    const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY; // Replace with your actual key
     
     if (!GEMINI_API_KEY || GEMINI_API_KEY === 'YOUR_API_KEY_HERE') {
       alert('Please add your Gemini API key to use this feature. Check the callGeminiAPI function in the code.');
