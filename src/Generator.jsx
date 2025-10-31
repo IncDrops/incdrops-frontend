@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Sparkles, Zap, TrendingUp, Users, Copy, Heart, RefreshCw, Loader2 } from 'lucide-react';
 
-// Calls your backend through the rewrite (/api/ideas → incdrops-backend)
 export default function ContentGenerator({ onNavigate }) {
   const [formData, setFormData] = useState({
     industry: '',
@@ -27,25 +26,35 @@ export default function ContentGenerator({ onNavigate }) {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  // ✅ Proper async backend call wrapper
-  const callIdeasAPI = async (formData) => {
+  const callGeminiAPI = async (formData) => {
+    const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+    const MODEL = 'gemini-2.0-flash-exp';
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
+    const { industry, targetAudience, services, contentType } = formData;
+
+    const prompt = `Generate 10 ${contentType} content ideas for a ${industry} business targeting ${targetAudience}. ${services ? `Products/services: ${services}` : ''} Return ONLY a valid JSON array: [{"id":1,"title":"...","description":"...","platforms":["..."],"hashtags":["#..."]}] Keep titles under 50 chars, descriptions under 150 chars.`;
+
     try {
-      const resp = await fetch("/api/ideas", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+      const response = await fetch(`${API_URL}?key=${GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { maxOutputTokens: 750, temperature: 0.8 }
+        })
       });
 
-      if (!resp.ok) {
-        const text = await resp.text().catch(() => '');
-        throw new Error(`API ${resp.status}: ${text || 'Ideas endpoint error'}`);
-      }
-
-      const data = await resp.json();
-      return { success: true, ideas: Array.isArray(data?.ideas) ? data.ideas : [] };
-    } catch (err) {
-      console.error('Ideas API error:', err);
-      return { success: false, error: err.message || 'Failed to generate ideas' };
+      if (!response.ok) throw new Error(`API Error: ${response.status}`);
+      
+      const data = await response.json();
+      const text = data.candidates[0].content.parts[0].text;
+      const cleaned = text.replace(/```json\n?|\n?```/g, '').trim();
+      const ideas = JSON.parse(cleaned);
+      
+      return { success: true, ideas };
+    } catch (error) {
+      console.error('Gemini API Error:', error);
+      return { success: false, error: error.message };
     }
   };
 
@@ -61,14 +70,14 @@ export default function ContentGenerator({ onNavigate }) {
 
     setLoading(true);
     try {
-      const result = await callIdeasAPI(formData);
+      const result = await callGeminiAPI(formData);
       if (result.success) {
         setIdeas(result.ideas);
         const newCount = usageCount + 1;
         setUsageCount(newCount);
         localStorage.setItem('incdrops_usage', String(newCount));
       } else {
-        alert('Failed to generate ideas. Please try again in a moment.');
+        alert('Failed to generate ideas. Please check your API key and try again.');
         console.error(result.error);
       }
     } catch (e) {
@@ -280,22 +289,26 @@ export default function ContentGenerator({ onNavigate }) {
 
                       <p className="text-gray-300 mb-4">{idea.description}</p>
 
-                      <div className="flex flex-wrap gap-2 mb-3">
-                        <span className="text-xs text-gray-400 font-semibold">Platforms:</span>
-                        {platforms.map((platform, i) => (
-                          <span key={i} className="px-3 py-1 bg-white/10 rounded-full text-xs text-gray-300">
-                            {platform}
-                          </span>
-                        ))}
-                      </div>
+                      {platforms.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          <span className="text-xs text-gray-400 font-semibold">Platforms:</span>
+                          {platforms.map((platform, i) => (
+                            <span key={i} className="px-3 py-1 bg-white/10 rounded-full text-xs text-gray-300">
+                              {platform}
+                            </span>
+                          ))}
+                        </div>
+                      )}
 
-                      <div className="flex flex-wrap gap-2">
-                        {hashtags.map((tag, i) => (
-                          <span key={i} className="text-sm text-blue-400">
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
+                      {hashtags.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {hashtags.map((tag, i) => (
+                            <span key={i} className="text-sm text-blue-400">
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
