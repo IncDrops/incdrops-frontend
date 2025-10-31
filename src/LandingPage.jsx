@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles, Zap, TrendingUp, Users, ArrowRight, Check, Target, Rocket, Shield, Clock, Layers, Twitter, Github, Linkedin, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Sparkles, Zap, TrendingUp, Users, ArrowRight, Check, Target, Rocket, Shield, Clock, Layers, Twitter, Github, Linkedin, ChevronLeft, ChevronRight, Menu, X } from 'lucide-react';
 
 export default function IncDropsLanding({ onNavigate }) {
   const [scrollY, setScrollY] = useState(0);
   const [visibleSections, setVisibleSections] = useState(new Set());
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const sectionRefs = useRef([]);
   const trackRef = useRef(null);
   const frameRef = useRef(null);
@@ -163,12 +164,34 @@ export default function IncDropsLanding({ onNavigate }) {
       }}>
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <h2 className="text-2xl font-bold bg-gradient-to-r from-gray-300 via-gray-100 to-gray-400 bg-clip-text text-transparent">IncDrops</h2>
+          
           <div className="hidden md:flex items-center space-x-8">
             <a href="#features" onClick={(e) => { e.preventDefault(); document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' }); }} className="text-gray-300 hover:text-white transition-colors">Features</a>
             <a href="#pricing" onClick={(e) => { e.preventDefault(); document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' }); }} className="text-gray-300 hover:text-white transition-colors">Pricing</a>
+            <a href="#" className="text-gray-300 hover:text-white transition-colors">About</a>
+            <a href="#" className="text-gray-300 hover:text-white transition-colors">Contact</a>
           </div>
-          <button onClick={() => onNavigate('generator')} className="px-6 py-2 bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 rounded-lg font-semibold transition-all duration-300 shadow-lg hover:scale-105">Get Started</button>
+          
+          <div className="flex items-center space-x-4">
+            <button onClick={() => onNavigate('generator')} className="hidden md:block px-6 py-2 bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 rounded-lg font-semibold transition-all duration-300 shadow-lg hover:scale-105">Get Started</button>
+            
+            <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 text-gray-300 hover:text-white transition-colors">
+              {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+          </div>
         </div>
+        
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-gray-800 bg-black/95 backdrop-blur-xl">
+            <div className="px-6 py-4 space-y-4">
+              <a href="#features" onClick={(e) => { e.preventDefault(); document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' }); setMobileMenuOpen(false); }} className="block text-gray-300 hover:text-white transition-colors py-2">Features</a>
+              <a href="#pricing" onClick={(e) => { e.preventDefault(); document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' }); setMobileMenuOpen(false); }} className="block text-gray-300 hover:text-white transition-colors py-2">Pricing</a>
+              <a href="#" onClick={() => setMobileMenuOpen(false)} className="block text-gray-300 hover:text-white transition-colors py-2">About</a>
+              <a href="#" onClick={() => setMobileMenuOpen(false)} className="block text-gray-300 hover:text-white transition-colors py-2">Contact</a>
+              <button onClick={() => { onNavigate('generator'); setMobileMenuOpen(false); }} className="w-full px-6 py-3 bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 rounded-lg font-semibold transition-all duration-300">Get Started</button>
+            </div>
+          </div>
+        )}
       </nav>
 
       <section className="relative min-h-screen flex items-center justify-center px-6">
@@ -270,7 +293,7 @@ export default function IncDropsLanding({ onNavigate }) {
               </ul>
               <button onClick={() => onNavigate('generator')} className="w-full py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-lg font-semibold">Get Started</button>
             </div>
-            <div className="bg-gradient-to-br from-gray-300 via-gray-200 to-gray-400 rounded-2xl p-8 scale-105">
+            <div className="bg-gradient-to-br from-gray-300 via-gray-200 to-gray-400 rounded-2xl p-8 relative scale-105">
               <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gray-800 px-4 py-1 rounded-full text-sm font-semibold text-white">POPULAR</div>
               <h3 className="text-2xl font-bold text-gray-900 mb-2">Pro</h3>
               <div className="text-5xl font-bold text-gray-900 mb-4">$49<span className="text-xl">/mo</span></div>
@@ -293,16 +316,57 @@ export default function IncDropsLanding({ onNavigate }) {
         </div>
       </section>
 
-      <footer className="border-t border-gray-800 py-12 px-6">
-        <div className="max-w-7xl mx-auto text-center">
-          <h3 className="text-2xl font-bold mb-4 bg-gradient-to-r from-gray-300 to-gray-400 bg-clip-text text-transparent">IncDrops</h3>
-          <p className="text-gray-400 mb-6">AI-powered content ideation</p>
-          <div className="flex justify-center space-x-6 mb-8">
-            <Twitter className="text-gray-400 hover:text-gray-200 cursor-pointer" size={24} />
-            <Github className="text-gray-400 hover:text-gray-200 cursor-pointer" size={24} />
-            <Linkedin className="text-gray-400 hover:text-gray-200 cursor-pointer" size={24} />
+      <footer className="border-t border-gray-800 py-16 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid md:grid-cols-4 gap-12 mb-12">
+            <div>
+              <h3 className="text-2xl font-bold mb-4 bg-gradient-to-r from-gray-300 via-gray-100 to-gray-400 bg-clip-text text-transparent">IncDrops</h3>
+              <p className="text-gray-400 mb-6 leading-relaxed">Never run out of content ideas. AI-powered ideation for modern creators.</p>
+              <div className="flex space-x-4">
+                <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-gray-200 transition-colors"><Twitter size={24} /></a>
+                <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-gray-200 transition-colors"><Github size={24} /></a>
+                <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-gray-200 transition-colors"><Linkedin size={24} /></a>
+              </div>
+            </div>
+            <div>
+              <h4 className="text-lg font-semibold text-gray-200 mb-4">Product</h4>
+              <ul className="space-y-3">
+                <li><a href="#features" onClick={(e) => { e.preventDefault(); document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' }); }} className="text-gray-400 hover:text-gray-200 transition-colors">Features</a></li>
+                <li><a href="#pricing" onClick={(e) => { e.preventDefault(); document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' }); }} className="text-gray-400 hover:text-gray-200 transition-colors">Pricing</a></li>
+                <li><a href="#" className="text-gray-400 hover:text-gray-200 transition-colors">API Access</a></li>
+                <li><a href="#" className="text-gray-400 hover:text-gray-200 transition-colors">Integrations</a></li>
+                <li><a href="#" className="text-gray-400 hover:text-gray-200 transition-colors">Roadmap</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-lg font-semibold text-gray-200 mb-4">Support</h4>
+              <ul className="space-y-3">
+                <li><a href="#" className="text-gray-400 hover:text-gray-200 transition-colors">Help Center</a></li>
+                <li><a href="#" className="text-gray-400 hover:text-gray-200 transition-colors">Documentation</a></li>
+                <li><a href="#" className="text-gray-400 hover:text-gray-200 transition-colors">Contact Us</a></li>
+                <li><a href="#" className="text-gray-400 hover:text-gray-200 transition-colors">Status Page</a></li>
+                <li><a href="#" className="text-gray-400 hover:text-gray-200 transition-colors">Community</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-lg font-semibold text-gray-200 mb-4">Legal</h4>
+              <ul className="space-y-3">
+                <li><a href="#" className="text-gray-400 hover:text-gray-200 transition-colors">Privacy Policy</a></li>
+                <li><a href="#" className="text-gray-400 hover:text-gray-200 transition-colors">Terms of Service</a></li>
+                <li><a href="#" className="text-gray-400 hover:text-gray-200 transition-colors">Cookie Policy</a></li>
+                <li><a href="#" className="text-gray-400 hover:text-gray-200 transition-colors">Security</a></li>
+                <li><a href="#" className="text-gray-400 hover:text-gray-200 transition-colors">GDPR</a></li>
+              </ul>
+            </div>
           </div>
-          <p className="text-gray-500 text-sm">© 2025 IncDrops. All rights reserved.</p>
+          <div className="pt-8 border-t border-gray-800 flex flex-col md:flex-row justify-between items-center">
+            <p className="text-gray-500 text-sm mb-4 md:mb-0">© 2025 IncDrops. All rights reserved.</p>
+            <div className="flex space-x-6 text-sm">
+              <a href="#" className="text-gray-500 hover:text-gray-300 transition-colors">Sitemap</a>
+              <a href="#" className="text-gray-500 hover:text-gray-300 transition-colors">Accessibility</a>
+              <a href="#" className="text-gray-500 hover:text-gray-300 transition-colors">Careers</a>
+            </div>
+          </div>
         </div>
       </footer>
     </div>
