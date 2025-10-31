@@ -10,6 +10,7 @@ export default function IncDropsLanding({ onNavigate }) {
   const frameRef = useRef(null);
   const isHovering = useRef(false);
   const isDragging = useRef(false);
+  const isPointerDown = useRef(false); // <-- FIX: Added to track click/touch state
   const dragStartX = useRef(0);
   const startScrollLeft = useRef(0);
   const speedPxPerSec = 40;
@@ -88,6 +89,8 @@ export default function IncDropsLanding({ onNavigate }) {
     // Only allow dragging with primary button (left click) or touch
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     
+    isPointerDown.current = true; // <-- FIX: Set state to down
+    
     if (longPressTimer.current) clearTimeout(longPressTimer.current);
     isDragging.current = false;
     setCanScroll(false);
@@ -101,6 +104,8 @@ export default function IncDropsLanding({ onNavigate }) {
   };
 
   const onPointerMove = (e) => {
+    if (!isPointerDown.current) return; // <-- FIX: Guard to only move if pointer is down
+
     const el = trackRef.current;
     if (!el) return;
     
@@ -127,6 +132,8 @@ export default function IncDropsLanding({ onNavigate }) {
   };
 
   const endDrag = (e) => {
+    isPointerDown.current = false; // <-- FIX: Set state to up
+
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
