@@ -31,66 +31,41 @@ export default function ContentGenerator({ onNavigate }) {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
+  // --- THIS IS THE NEW, SECURE FUNCTION ---
+  // It calls your backend /api/generate-ideas file and keeps your key safe.
   const callGeminiAPI = async (formData) => {
-    const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-
-    // Gemini 2.0 Flash model
-    const MODEL = 'gemini-2.0-flash';
-    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
-    const { industry, targetAudience, services, contentType } = formData;
-
-    const prompt = `Generate 10 ${contentType} content ideas for a ${industry} business targeting ${targetAudience}. ${services ? `They offer: ${services}` : ''}
-
-Format each idea EXACTLY like this (one per line):
-TITLE: [short title] | DESC: [brief description] | PLATFORMS: [platform1, platform2] | TAGS: [#tag1, #tag2, #tag3]
-
-Generate 10 ideas in this format. Keep titles under 50 characters and descriptions under 150 characters.`;
-
     try {
-      const response = await fetch(`${API_URL}?key=${GEMINI_API_KEY}`, {
+      // Call your existing API route /api/generate-ideas
+      const response = await fetch('/api/generate-ideas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { 
-            maxOutputTokens: 2000,
-            temperature: 0.7
-          }
-        })
+        body: JSON.stringify(formData), // Send the form data to your server
       });
 
-      if (!response.ok) throw new Error(`API Error: ${response.status}`);
-      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Error from server: ${response.status}`);
+      }
+
+      // Get the ideas back from your server
       const data = await response.json();
-      let text = data.candidates[0].content.parts[0].text;
       
-      console.log('Raw response:', text);
+      // Your /api/generate-ideas file returns ideas as a JSON array.
+      // We just add the 'id' that your UI loop expects.
+      const ideasWithId = data.ideas.map((idea, index) => ({
+        ...idea,
+        id: index + 1 // Match the original logic from your file
+      }));
       
-      // Parse the plain text format into JSON
-      const lines = text.split('\n').filter(line => line.includes('TITLE:'));
-      
-      const ideas = lines.map((line, index) => {
-        const titleMatch = line.match(/TITLE:\s*(.+?)\s*\|/);
-        const descMatch = line.match(/DESC:\s*(.+?)\s*\|/);
-        const platformsMatch = line.match(/PLATFORMS:\s*(.+?)\s*\|/);
-        const tagsMatch = line.match(/TAGS:\s*(.+?)$/);
-        
-        return {
-          id: index + 1,
-          title: titleMatch ? titleMatch[1].trim() : `Idea ${index + 1}`,
-          description: descMatch ? descMatch[1].trim() : 'Content idea description',
-          platforms: platformsMatch ? platformsMatch[1].split(',').map(p => p.trim()) : ['Social Media'],
-          hashtags: tagsMatch ? tagsMatch[1].split(',').map(t => t.trim()) : ['#content']
-        };
-      }).slice(0, 10);
-      
-      return { success: true, ideas };
-      
-    } catch (error) {
-      console.error('Gemini API Error:', error);
+      return { success: true, ideas: ideasWithId };
+
+    } catch (error)
+    {
+      console.error('Error calling /api/generate-ideas:', error);
       return { success: false, error: error.message };
     }
   };
+  // --- END OF NEW, SECURE FUNCTION ---
 
 
   const generateIdeas = async () => {
@@ -154,8 +129,8 @@ Generate 10 ideas in this format. Keep titles under 50 characters and descriptio
     return ideas.map(idea => ({
       title: idea.title,
       description: idea.description,
-      platforms: idea.platforms.join(', '), // Join arrays into a string
-      hashtags: idea.hashtags.join(', ')   // Join arrays into a string
+      platforms: Array.isArray(idea.platforms) ? idea.platforms.join(', ') : '', // Join arrays into a string
+      hashtags: Array.isArray(idea.hashtags) ? idea.hashtags.join(', ') : ''   // Join arrays into a string
     }));
   }, [ideas]);
 
@@ -175,8 +150,8 @@ Generate 10 ideas in this format. Keep titles under 50 characters and descriptio
       const ideaData = [
         idea.title,
         idea.description,
-        idea.platforms.join(', '), // Join arrays
-        idea.hashtags.join(', ')  // Join arrays
+        Array.isArray(idea.platforms) ? idea.platforms.join(', ') : '', // Join arrays
+        Array.isArray(idea.hashtags) ? idea.hashtags.join(', ') : ''  // Join arrays
       ];
       tableRows.push(ideaData);
     });
@@ -224,7 +199,7 @@ Generate 10 ideas in this format. Keep titles under 50 characters and descriptio
               className="text-gray-400 hover:text-gray-200 transition-colors"
               title="Back to Home"
             >
-              â† Back
+              â†  Back
             </button>
             <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-300 via-gray-100 to-gray-400 bg-clip-text text-transparent">
               IncDrops Generator
@@ -387,7 +362,7 @@ Generate 10 ideas in this format. Keep titles under 50 characters and descriptio
                   return (
                     <div
                       key={idea.id}
-                      className="bg-white/5 backdrop-blur-xl border border-white/1M0 rounded-xl p-6 hover:bg-white/10 hover:border-white/20 transition-all duration-300"
+                      className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-6 hover:bg-white/10 hover:border-white/20 transition-all duration-300"
                     >
                       <div className="flex items-start justify-between mb-3">
                         <h3 className="text-xl font-bold text-gray-100">{idea.title}</h3>
