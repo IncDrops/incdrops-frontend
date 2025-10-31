@@ -148,6 +148,20 @@ export default function IncDropsLanding({ onNavigate }) {
         .animate-scroll-down:hover, .animate-scroll-up:hover { animation-play-state: paused; }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-10px); }
+        }
+        .float-animation {
+          animation: float 3s ease-in-out infinite;
+        }
+        @keyframes glow {
+          0%, 100% { box-shadow: 0 0 20px rgba(156, 163, 175, 0.3); }
+          50% { box-shadow: 0 0 30px rgba(156, 163, 175, 0.5); }
+        }
+        .glow-on-hover:hover {
+          animation: glow 2s ease-in-out infinite;
+        }
       `}</style>
 
       <div className="fixed inset-0 opacity-10 pointer-events-none">
@@ -210,13 +224,13 @@ export default function IncDropsLanding({ onNavigate }) {
             <p className="text-xl md:text-2xl text-gray-400 mb-12 max-w-3xl mx-auto leading-relaxed">
               AI-powered content ideas delivered instantly. <span className="text-gray-200">Drop by drop,</span> your content calendar fills itself.
             </p>
-            <button onClick={() => onNavigate('generator')} className="group px-8 py-4 bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 rounded-lg text-lg font-semibold transition-all duration-300 shadow-lg hover:scale-105">
+            <button onClick={() => onNavigate('generator')} className="group px-8 py-4 bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 rounded-lg text-lg font-semibold transition-all duration-300 shadow-lg shadow-gray-900/50 hover:shadow-xl hover:shadow-gray-800/50 hover:scale-105 glow-on-hover">
               Start Generating Ideas
-              <ArrowRight className="inline-block ml-2 group-hover:translate-x-1 transition-transform" size={20} />
+              <ArrowRight className="inline-block ml-2 group-hover:translate-x-1 transition-transform duration-300" size={20} />
             </button>
           </div>
         </div>
-        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 animate-bounce z-10">
+        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 animate-bounce z-10 float-animation">
           <div className="w-6 h-10 border-2 border-gray-600 rounded-full flex items-start justify-center p-2">
             <div className="w-1 h-2 bg-gray-400 rounded-full" />
           </div>
@@ -265,8 +279,8 @@ export default function IncDropsLanding({ onNavigate }) {
           <h2 className="text-6xl font-bold mb-20 text-center bg-gradient-to-r from-gray-200 to-gray-400 bg-clip-text text-transparent">Built for Scale</h2>
           <div className="grid md:grid-cols-3 gap-12">
             {features.map((feature, i) => (
-              <div key={i} ref={el => sectionRefs.current[i + 2] = el} className={`text-center transition-all duration-700 ${visibleSections.has(i + 2) ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`} style={{ transitionDelay: `${i * 100}ms` }}>
-                <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-gray-400 via-gray-300 to-gray-500 rounded-2xl flex items-center justify-center shadow-lg">
+              <div key={i} ref={el => sectionRefs.current[i + 2] = el} className={`text-center transition-all duration-700 hover:scale-110 ${visibleSections.has(i + 2) ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`} style={{ transitionDelay: `${i * 100}ms` }}>
+                <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-gray-400 via-gray-300 to-gray-500 rounded-2xl flex items-center justify-center shadow-lg hover:shadow-2xl transition-shadow duration-300">
                   <feature.icon size={40} className="text-gray-900" />
                 </div>
                 <h3 className="text-2xl font-semibold text-gray-100 mb-2">{feature.title}</h3>
@@ -283,34 +297,68 @@ export default function IncDropsLanding({ onNavigate }) {
             <h2 className="text-6xl font-bold mb-6 bg-gradient-to-r from-gray-200 to-gray-400 bg-clip-text text-transparent">Choose Your Plan</h2>
             <p className="text-xl text-gray-400">Scale as you grow. Cancel anytime.</p>
           </div>
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="bg-gradient-to-br from-gray-400 via-gray-300 to-gray-500 rounded-2xl p-8">
+          <div className="grid md:grid-cols-4 gap-8">
+            <div className="bg-gradient-to-br from-gray-400 via-gray-300 to-gray-500 rounded-2xl p-8 shadow-xl shadow-gray-700/50 hover:shadow-2xl hover:shadow-gray-600/50 transition-all duration-300 hover:scale-105">
               <h3 className="text-2xl font-bold text-gray-900 mb-2">Starter</h3>
               <div className="text-5xl font-bold text-gray-900 mb-4">Free</div>
               <ul className="space-y-3 mb-8">
-                <li className="flex items-start text-gray-800"><Check className="mr-2 mt-1" size={20} /><span>5 ideas/month</span></li>
-                <li className="flex items-start text-gray-800"><Check className="mr-2 mt-1" size={20} /><span>Social posts</span></li>
+                <li className="flex items-start text-gray-800"><Check className="mr-2 mt-1 flex-shrink-0 text-gray-700" size={20} /><span>5 ideas per month</span></li>
+                <li className="flex items-start text-gray-800"><Check className="mr-2 mt-1 flex-shrink-0 text-gray-700" size={20} /><span>Social posts only</span></li>
+                <li className="flex items-start text-gray-800"><Check className="mr-2 mt-1 flex-shrink-0 text-gray-700" size={20} /><span>Basic templates</span></li>
+                <li className="flex items-start text-gray-800"><Check className="mr-2 mt-1 flex-shrink-0 text-gray-700" size={20} /><span>Community support</span></li>
               </ul>
-              <button onClick={() => onNavigate('generator')} className="w-full py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-lg font-semibold">Get Started</button>
+              <button onClick={() => onNavigate('generator')} className="w-full py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-lg font-semibold transition-all duration-300 hover:scale-105">Get Started</button>
             </div>
-            <div className="bg-gradient-to-br from-gray-300 via-gray-200 to-gray-400 rounded-2xl p-8 relative scale-105">
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gray-800 px-4 py-1 rounded-full text-sm font-semibold text-white">POPULAR</div>
+            
+            <div className="bg-gradient-to-br from-gray-400 via-gray-300 to-gray-500 rounded-2xl p-8 shadow-xl shadow-gray-700/50 hover:shadow-2xl hover:shadow-gray-600/50 transition-all duration-300 hover:scale-105">
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">Basic</h3>
+              <div className="flex items-baseline mb-4">
+                <span className="text-5xl font-bold text-gray-900">$29</span>
+                <span className="text-gray-700 ml-2">/month</span>
+              </div>
+              <p className="text-gray-700 mb-6">For regular creators</p>
+              <ul className="space-y-3 mb-8">
+                <li className="flex items-start text-gray-800"><Check className="mr-2 mt-1 flex-shrink-0 text-gray-700" size={20} /><span>50 ideas per month</span></li>
+                <li className="flex items-start text-gray-800"><Check className="mr-2 mt-1 flex-shrink-0 text-gray-700" size={20} /><span>All content types</span></li>
+                <li className="flex items-start text-gray-800"><Check className="mr-2 mt-1 flex-shrink-0 text-gray-700" size={20} /><span>Save favorites</span></li>
+                <li className="flex items-start text-gray-800"><Check className="mr-2 mt-1 flex-shrink-0 text-gray-700" size={20} /><span>Export to CSV/TXT</span></li>
+              </ul>
+              <button onClick={() => onNavigate('generator')} className="w-full py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-lg font-semibold transition-all duration-300 hover:scale-105">Start Basic</button>
+            </div>
+            
+            <div className="bg-gradient-to-br from-gray-300 via-gray-200 to-gray-400 rounded-2xl p-8 relative scale-105 shadow-2xl shadow-gray-600/70">
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-gray-700 to-gray-900 px-4 py-1 rounded-full text-sm font-semibold text-white">MOST POPULAR</div>
               <h3 className="text-2xl font-bold text-gray-900 mb-2">Pro</h3>
-              <div className="text-5xl font-bold text-gray-900 mb-4">$49<span className="text-xl">/mo</span></div>
+              <div className="flex items-baseline mb-4">
+                <span className="text-5xl font-bold text-gray-900">$49</span>
+                <span className="text-gray-700 ml-2">/month</span>
+              </div>
+              <p className="text-gray-700 mb-6">For power users</p>
               <ul className="space-y-3 mb-8">
-                <li className="flex items-start text-gray-800"><Check className="mr-2 mt-1" size={20} /><span>200 ideas/month</span></li>
-                <li className="flex items-start text-gray-800"><Check className="mr-2 mt-1" size={20} /><span>All features</span></li>
+                <li className="flex items-start text-gray-800"><Check className="mr-2 mt-1 flex-shrink-0 text-gray-700" size={20} /><span>200 ideas per month</span></li>
+                <li className="flex items-start text-gray-800"><Check className="mr-2 mt-1 flex-shrink-0 text-gray-700" size={20} /><span>Everything in Basic</span></li>
+                <li className="flex items-start text-gray-800"><Check className="mr-2 mt-1 flex-shrink-0 text-gray-700" size={20} /><span>Priority email support</span></li>
+                <li className="flex items-start text-gray-800"><Check className="mr-2 mt-1 flex-shrink-0 text-gray-700" size={20} /><span>Advanced filters</span></li>
+                <li className="flex items-start text-gray-800"><Check className="mr-2 mt-1 flex-shrink-0 text-gray-700" size={20} /><span>Generation history</span></li>
               </ul>
-              <button onClick={() => onNavigate('generator')} className="w-full py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-lg font-semibold">Start Pro</button>
+              <button onClick={() => onNavigate('generator')} className="w-full py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-lg font-semibold transition-all duration-300 hover:scale-105">Start Pro</button>
             </div>
-            <div className="bg-gradient-to-br from-gray-400 via-gray-300 to-gray-500 rounded-2xl p-8">
+            
+            <div className="bg-gradient-to-br from-gray-400 via-gray-300 to-gray-500 rounded-2xl p-8 shadow-xl shadow-gray-700/50 hover:shadow-2xl hover:shadow-gray-600/50 transition-all duration-300 hover:scale-105">
               <h3 className="text-2xl font-bold text-gray-900 mb-2">Business</h3>
-              <div className="text-5xl font-bold text-gray-900 mb-4">$99<span className="text-xl">/mo</span></div>
+              <div className="flex items-baseline mb-4">
+                <span className="text-5xl font-bold text-gray-900">$99</span>
+                <span className="text-gray-700 ml-2">/month</span>
+              </div>
+              <p className="text-gray-700 mb-6">For teams & agencies</p>
               <ul className="space-y-3 mb-8">
-                <li className="flex items-start text-gray-800"><Check className="mr-2 mt-1" size={20} /><span>Unlimited ideas</span></li>
-                <li className="flex items-start text-gray-800"><Check className="mr-2 mt-1" size={20} /><span>Team access</span></li>
+                <li className="flex items-start text-gray-800"><Check className="mr-2 mt-1 flex-shrink-0 text-gray-700" size={20} /><span>Unlimited ideas</span></li>
+                <li className="flex items-start text-gray-800"><Check className="mr-2 mt-1 flex-shrink-0 text-gray-700" size={20} /><span>Everything in Pro</span></li>
+                <li className="flex items-start text-gray-800"><Check className="mr-2 mt-1 flex-shrink-0 text-gray-700" size={20} /><span>Team collaboration (5 users)</span></li>
+                <li className="flex items-start text-gray-800"><Check className="mr-2 mt-1 flex-shrink-0 text-gray-700" size={20} /><span>API access</span></li>
+                <li className="flex items-start text-gray-800"><Check className="mr-2 mt-1 flex-shrink-0 text-gray-700" size={20} /><span>White-label exports</span></li>
               </ul>
-              <button className="w-full py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-lg font-semibold">Contact Sales</button>
+              <button className="w-full py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-lg font-semibold transition-all duration-300 hover:scale-105">Contact Sales</button>
             </div>
           </div>
         </div>
