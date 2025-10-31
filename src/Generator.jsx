@@ -44,7 +44,7 @@ export default function ContentGenerator({ onNavigate }) {
     }
 
     // Gemini 2.0 Flash model
-    const MODEL = 'gemini-2.0-flash-exp';
+    const MODEL = 'gemini-2.0-flash';
     const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
     const { industry, targetAudience, services, contentType } = formData;
 
