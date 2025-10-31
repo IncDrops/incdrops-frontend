@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Sparkles, Zap, TrendingUp, Users, Copy, Heart, RefreshCw, Loader2 } from 'lucide-react';
 
-const API_BASE = 'https://incdrops-backend-api.vercel.app';
-
+// Calls your backend through the rewrite (/api/ideas → incdrops-backend)
 export default function ContentGenerator({ onNavigate }) {
   const [formData, setFormData] = useState({
     industry: '',
@@ -28,17 +27,20 @@ export default function ContentGenerator({ onNavigate }) {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  // ---- Backend call (POST /api/ideas) ----
-  const resp = await fetch("/api/ideas", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify(formData),
-});
+  // ✅ Proper async backend call wrapper
+  const callIdeasAPI = async (formData) => {
+    try {
+      const resp = await fetch("/api/ideas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
 
       if (!resp.ok) {
         const text = await resp.text().catch(() => '');
         throw new Error(`API ${resp.status}: ${text || 'Ideas endpoint error'}`);
       }
+
       const data = await resp.json();
       return { success: true, ideas: Array.isArray(data?.ideas) ? data.ideas : [] };
     } catch (err) {
@@ -137,13 +139,13 @@ export default function ContentGenerator({ onNavigate }) {
         </div>
       </div>
 
+      {/* Main */}
       <div className="relative max-w-7xl mx-auto px-6 py-12">
         <div className="grid lg:grid-cols-3 gap-8">
-          {/* Left Sidebar - Input Form */}
+          {/* Left Sidebar */}
           <div className="lg:col-span-1">
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 sticky top-6">
               <h2 className="text-2xl font-bold mb-6 text-gray-100">Your Business</h2>
-
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">Industry *</label>
@@ -230,7 +232,7 @@ export default function ContentGenerator({ onNavigate }) {
             </div>
           </div>
 
-          {/* Main Area - Generated Ideas */}
+          {/* Main Content */}
           <div className="lg:col-span-2">
             <div className="mb-6">
               <h2 className="text-3xl font-bold text-gray-100">Generated Ideas</h2>
@@ -267,9 +269,7 @@ export default function ContentGenerator({ onNavigate }) {
                             <Heart size={18} className="text-gray-400 hover:text-red-400" />
                           </button>
                           <button
-                            onClick={() =>
-                              copyToClipboard(`${idea.title}\n\n${idea.description}`)
-                            }
+                            onClick={() => copyToClipboard(`${idea.title}\n\n${idea.description}`)}
                             className="p-2 hover:bg-white/10 rounded-lg transition-colors"
                             title="Copy to clipboard"
                           >
@@ -283,10 +283,7 @@ export default function ContentGenerator({ onNavigate }) {
                       <div className="flex flex-wrap gap-2 mb-3">
                         <span className="text-xs text-gray-400 font-semibold">Platforms:</span>
                         {platforms.map((platform, i) => (
-                          <span
-                            key={i}
-                            className="px-3 py-1 bg-white/10 rounded-full text-xs text-gray-300"
-                          >
+                          <span key={i} className="px-3 py-1 bg-white/10 rounded-full text-xs text-gray-300">
                             {platform}
                           </span>
                         ))}
