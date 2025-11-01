@@ -33,35 +33,68 @@ export default function ContentGenerator({ onNavigate }) {
 
   // --- THIS IS THE NEW, SECURE FUNCTION ---
   // It calls your backend /api/generate-ideas file and keeps your key safe.
-  const callGeminiAPI = async (formData) => {
+ const callGeminiAPI = async (formData) => {
+    const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY; // Change this if using direct key
+    
+    if (!GEMINI_API_KEY) {
+      alert('Please add your Gemini API key.');
+      return { success: false, error: 'API key not configured' };
+    }
+
+    const MODEL = 'gemini-2.0-flash-exp';
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
+    const { industry, targetAudience, services, contentType } = formData;
+
+    const prompt = `Generate 10 ${contentType} content ideas for a ${industry} business targeting ${targetAudience}. ${services ? `They offer: ${services}` : ''}
+
+Format each idea EXACTLY like this (one per line):
+TITLE: [short title] | DESC: [brief description] | PLATFORMS: [platform1, platform2] | TAGS: [#tag1, #tag2, #tag3]
+
+Generate 10 ideas in this format. Keep titles under 50 characters and descriptions under 150 characters.`;
+
     try {
-      // Call your existing API route /api/generate-ideas
-      const response = await fetch('/api/generate-ideas', {
+      const response = await fetch(`${API_URL}?key=${GEMINI_API_KEY}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData), // Send the form data to your server
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { 
+            maxOutputTokens: 2000,
+            temperature: 0.7
+          }
+        })
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `Error from server: ${response.status}`);
-      }
-
-      // Get the ideas back from your server
+      if (!response.ok) throw new Error(`API Error: ${response.status}`);
+      
       const data = await response.json();
+      let text = data.candidates[0].content.parts[0].text;
       
-      // Your /api/generate-ideas file returns ideas as a JSON array.
-      // We just add the 'id' that your UI loop expects.
-      const ideasWithId = data.ideas.map((idea, index) => ({
-        ...idea,
-        id: index + 1 // Match the original logic from your file
-      }));
+      console.log('Raw response:', text);
       
-      return { success: true, ideas: ideasWithId };
-
-    } catch (error)
-    {
-      console.error('Error calling /api/generate-ideas:', error);
+      const lines = text.split('\n').filter(line => line.includes('TITLE:'));
+      
+      const ideas = lines.map((line, index) => {
+        const titleMatch = line.match(/TITLE:\s*(.+?)\s*\|/);
+        const descMatch = line.match(/DESC:\s*(.+?)\s*\|/);
+        const platformsMatch = line.match(/PLATFORMS:\s*(.+?)\s*\|/);
+        const tagsMatch = line.match(/TAGS:\s*(.+?)$/);
+        
+        return {
+          id: Date.now() + index,
+          title: titleMatch ? titleMatch[1].trim() : `Idea ${index + 1}`,
+          description: descMatch ? descMatch[1].trim() : 'Content idea description',
+          platforms: platformsMatch ? platformsMatch[1].split(',').map(p => p.trim()) : ['Social Media'],
+          hashtags: tagsMatch ? tagsMatch[1].split(',').map(t => t.trim()) : ['#content'],
+          timestamp: new Date().toISOString(),
+          contentType: contentType
+        };
+      }).slice(0, 10);
+      
+      return { success: true, ideas };
+      
+    } catch (error) {
+      console.error('Gemini API Error:', error);
       return { success: false, error: error.message };
     }
   };
