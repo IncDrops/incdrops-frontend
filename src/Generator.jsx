@@ -1,10 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Sparkles, Zap, TrendingUp, Users, Copy, Heart, RefreshCw, Loader2, FileDown } from 'lucide-react';
-
-// NEW: Import libraries for exporting
-import { CSVLink } from 'react-csv';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import { Sparkles, Zap, TrendingUp, Users, Copy, Heart, RefreshCw, Loader2, FileDown, X, Filter, Clock, Mic, Image, Video, FileText, Mail } from 'lucide-react';
 
 export default function ContentGenerator({ onNavigate }) {
   const [formData, setFormData] = useState({
@@ -16,24 +11,44 @@ export default function ContentGenerator({ onNavigate }) {
 
   const [ideas, setIdeas] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [currentTier, setCurrentTier] = useState('free'); // free, basic, pro, business
   const [usageCount, setUsageCount] = useState(0);
+  const [generationHistory, setGenerationHistory] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [showStats, setShowStats] = useState(false);
   const [savedIdeas, setSavedIdeas] = useState([]);
-  const maxFreeIdeas = 5;
+  const [showSavedModal, setShowSavedModal] = useState(false);
+  const [filterPlatform, setFilterPlatform] = useState('all');
+  const [sortBy, setSortBy] = useState('recent');
+  const [copiedId, setCopiedId] = useState(null);
+  const [justSavedId, setJustSavedId] = useState(null);
+  
+  // Tier limits
+  const tierLimits = {
+    free: 5,
+    basic: 50,
+    pro: 200,
+    business: Infinity
+  };
+  
+  const maxIdeas = tierLimits[currentTier];
 
   const contentTypes = [
     { id: 'social', name: 'Social Posts', icon: Sparkles },
     { id: 'blog', name: 'Blog Ideas', icon: Zap },
     { id: 'ads', name: 'Ad Copy', icon: TrendingUp },
-    { id: 'email', name: 'Email Campaigns', icon: Users },
+    { id: 'email', name: 'Email Campaigns', icon: Mail },
+    { id: 'video', name: 'Video Scripts', icon: Video },
+    { id: 'podcast', name: 'Podcast Topics', icon: Mic },
+    { id: 'infographic', name: 'Infographics', icon: Image },
+    { id: 'whitepaper', name: 'Whitepapers', icon: FileText },
   ];
 
   const handleInputChange = (e) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  // --- THIS IS THE NEW, SECURE FUNCTION ---
-  // It calls your backend /api/generate-ideas file and keeps your key safe.
- const callGeminiAPI = async (formData) => {
+  const callGeminiAPI = async (formData) => {
     const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY; // Change this if using direct key
     
     if (!GEMINI_API_KEY) {
@@ -98,12 +113,15 @@ Generate 10 ideas in this format. Keep titles under 50 characters and descriptio
       return { success: false, error: error.message };
     }
   };
-  // --- END OF NEW, SECURE FUNCTION ---
+```
 
+Now make sure your `.env` file has:
+```
+VITE_GEMINI_API_KEY=your_actual_key_here
 
   const generateIdeas = async () => {
-    if (usageCount >= maxFreeIdeas) {
-      alert("You've reached your free tier limit! Sign up to continue generating ideas.");
+    if (usageCount >= maxIdeas) {
+      alert(`You've reached your ${currentTier} tier limit! Upgrade to continue generating ideas.`);
       return;
     }
     if (!formData.industry || !formData.targetAudience) {
@@ -119,6 +137,20 @@ Generate 10 ideas in this format. Keep titles under 50 characters and descriptio
         const newCount = usageCount + 1;
         setUsageCount(newCount);
         localStorage.setItem('incdrops_usage', String(newCount));
+        
+        // Add to history
+        const historyEntry = {
+          id: Date.now(),
+          timestamp: new Date().toISOString(),
+          industry: formData.industry,
+          audience: formData.targetAudience,
+          contentType: formData.contentType,
+          ideasCount: result.ideas.length,
+          ideas: result.ideas
+        };
+        const newHistory = [historyEntry, ...generationHistory].slice(0, 50); // Keep last 50
+        setGenerationHistory(newHistory);
+        localStorage.setItem('incdrops_history', JSON.stringify(newHistory));
       } else {
         alert('Failed to generate ideas. Please check your API key and try again.');
         console.error(result.error);
@@ -133,117 +165,231 @@ Generate 10 ideas in this format. Keep titles under 50 characters and descriptio
 
   const saveIdea = (idea) => {
     if (!savedIdeas.find((s) => s.id === idea.id)) {
-      setSavedIdeas([...savedIdeas, idea]);
-      alert('Idea saved!');
+      const newSaved = [...savedIdeas, idea];
+      setSavedIdeas(newSaved);
+      localStorage.setItem('incdrops_saved', JSON.stringify(newSaved));
+      setJustSavedId(idea.id);
+      setTimeout(() => setJustSavedId(null), 2000);
     }
   };
 
-  const copyToClipboard = (text) => {
+  const removeSavedIdea = (ideaId) => {
+    const newSaved = savedIdeas.filter(idea => idea.id !== ideaId);
+    setSavedIdeas(newSaved);
+    localStorage.setItem('incdrops_saved', JSON.stringify(newSaved));
+  };
+
+  const copyToClipboard = (text, ideaId) => {
     navigator.clipboard.writeText(text);
-    alert('Copied to clipboard!');
+    setCopiedId(ideaId);
+    setTimeout(() => setCopiedId(null), 2000);
   };
 
   useEffect(() => {
     const stored = localStorage.getItem('incdrops_usage');
     if (stored) setUsageCount(parseInt(stored, 10));
+    
+    const tierStored = localStorage.getItem('incdrops_tier');
+    if (tierStored) setCurrentTier(tierStored);
+    
+    const savedStored = localStorage.getItem('incdrops_saved');
+    if (savedStored) {
+      try {
+        setSavedIdeas(JSON.parse(savedStored));
+      } catch (e) {
+        console.error('Error loading saved ideas:', e);
+      }
+    }
+    
+    const historyStored = localStorage.getItem('incdrops_history');
+    if (historyStored) {
+      try {
+        setGenerationHistory(JSON.parse(historyStored));
+      } catch (e) {
+        console.error('Error loading history:', e);
+      }
+    }
   }, []);
 
-  // --- NEW: CSV Export Logic ---
-  // Prepare headers and data for react-csv
-  const csvHeaders = [
-    { label: "Title", key: "title" },
-    { label: "Description", key: "description" },
-    { label: "Platforms", key: "platforms" },
-    { label: "Hashtags", key: "hashtags" }
-  ];
+  // Calculate stats
+  const stats = useMemo(() => {
+    const totalGenerated = generationHistory.reduce((sum, entry) => sum + entry.ideasCount, 0);
+    const contentTypeBreakdown = {};
+    generationHistory.forEach(entry => {
+      contentTypeBreakdown[entry.contentType] = (contentTypeBreakdown[entry.contentType] || 0) + 1;
+    });
+    
+    return {
+      totalGenerations: generationHistory.length,
+      totalIdeas: totalGenerated,
+      savedCount: savedIdeas.length,
+      mostUsedType: Object.keys(contentTypeBreakdown).reduce((a, b) => 
+        contentTypeBreakdown[a] > contentTypeBreakdown[b] ? a : b, 'N/A'),
+      remainingIdeas: maxIdeas === Infinity ? '∞' : maxIdeas - usageCount
+    };
+  }, [generationHistory, savedIdeas, maxIdeas, usageCount]);
 
-  // Memoize data to prevent re-computation on every render
-  const csvData = useMemo(() => {
-    return ideas.map(idea => ({
-      title: idea.title,
-      description: idea.description,
-      platforms: Array.isArray(idea.platforms) ? idea.platforms.join(', ') : '', // Join arrays into a string
-      hashtags: Array.isArray(idea.hashtags) ? idea.hashtags.join(', ') : ''   // Join arrays into a string
-    }));
+  // Filter and sort ideas
+  const filteredAndSortedIdeas = useMemo(() => {
+    let filtered = [...ideas];
+    
+    if (filterPlatform !== 'all') {
+      filtered = filtered.filter(idea => 
+        idea.platforms.some(p => p.toLowerCase().includes(filterPlatform.toLowerCase()))
+      );
+    }
+    
+    if (sortBy === 'recent') {
+      filtered.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    } else if (sortBy === 'oldest') {
+      filtered.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    } else if (sortBy === 'title') {
+      filtered.sort((a, b) => a.title.localeCompare(b.title));
+    }
+    
+    return filtered;
+  }, [ideas, filterPlatform, sortBy]);
+
+  // Get unique platforms from ideas
+  const uniquePlatforms = useMemo(() => {
+    const platforms = new Set();
+    ideas.forEach(idea => {
+      idea.platforms.forEach(p => platforms.add(p));
+    });
+    return Array.from(platforms);
   }, [ideas]);
 
-  // --- NEW: PDF Export Logic ---
-  const handleExportPDF = () => {
-    const doc = new jsPDF();
+  // Simple CSV export without external library
+  const handleExportCSV = () => {
+    const headers = ['Title', 'Description', 'Platforms', 'Hashtags'];
+    const rows = ideas.map(idea => [
+      idea.title,
+      idea.description,
+      idea.platforms.join('; '),
+      idea.hashtags.join('; ')
+    ]);
     
-    // Add a title to the PDF
-    doc.text("IncDrops - Generated Content Ideas", 14, 20);
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
     
-    // Define columns and rows for the table
-    const tableColumn = ["Title", "Description", "Platforms", "Hashtags"];
-    const tableRows = [];
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'incdrops-ideas.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
-    // Map ideas data to rows
-    ideas.forEach(idea => {
-      const ideaData = [
-        idea.title,
-        idea.description,
-        Array.isArray(idea.platforms) ? idea.platforms.join(', ') : '', // Join arrays
-        Array.isArray(idea.hashtags) ? idea.hashtags.join(', ') : ''  // Join arrays
-      ];
-      tableRows.push(ideaData);
-    });
-
-    // Add table to PDF
-    doc.autoTable({
-      head: [tableColumn],
-      body: tableRows,
-      startY: 25, // Start table below the title
-      theme: 'grid',
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [22, 22, 22] }, // Dark header
-      columnStyles: {
-        0: { cellWidth: 30 }, // Title
-        1: { cellWidth: 'auto' }, // Description
-        2: { cellWidth: 30 }, // Platforms
-        3: { cellWidth: 30 }  // Hashtags
-      }
-    });
-
-    // Save the PDF
-    doc.save("incdrops-ideas.pdf");
+  // Simple text export as alternative to PDF
+  const handleExportText = () => {
+    const content = ideas.map((idea, i) => 
+      `${i + 1}. ${idea.title}\n\n` +
+      `Description: ${idea.description}\n` +
+      `Platforms: ${idea.platforms.join(', ')}\n` +
+      `Hashtags: ${idea.hashtags.join(' ')}\n` +
+      `${'='.repeat(60)}\n\n`
+    ).join('');
+    
+    const fullContent = `IncDrops - Generated Content Ideas\n${'='.repeat(60)}\n\n${content}`;
+    
+    const blob = new Blob([fullContent], { type: 'text/plain;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'incdrops-ideas.txt');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      {/* Background Grid */}
+    <div className="min-h-screen bg-black text-white overflow-x-hidden">
+      <style>{`
+        @keyframes shimmer {
+          0% { background-position: -1000px 0; }
+          100% { background-position: 1000px 0; }
+        }
+        .skeleton {
+          background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.05) 75%);
+          background-size: 1000px 100%;
+          animation: shimmer 2s infinite;
+        }
+        @keyframes slideUp {
+          from { transform: translateY(10px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+        .slide-up {
+          animation: slideUp 0.3s ease-out forwards;
+        }
+        @keyframes pulse-ring {
+          0% { transform: scale(0.95); opacity: 1; }
+          50% { transform: scale(1.05); opacity: 0.7; }
+          100% { transform: scale(0.95); opacity: 1; }
+        }
+        .pulse-ring {
+          animation: pulse-ring 2s ease-in-out infinite;
+        }
+        @keyframes success-pop {
+          0% { transform: scale(0.8); opacity: 0; }
+          50% { transform: scale(1.1); }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        .success-pop {
+          animation: success-pop 0.3s ease-out;
+        }
+        html, body {
+          overscroll-behavior-x: none;
+        }
+      `}</style>
+      
       <div className="fixed inset-0 opacity-10 pointer-events-none">
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage:
-              'linear-gradient(#666 1px, transparent 1px), linear-gradient(90deg, #666 1px, transparent 1px)',
-            backgroundSize: '50px 50px',
-          }}
-        />
+        <div className="absolute inset-0" style={{
+          backgroundImage: 'linear-gradient(#666 1px, transparent 1px), linear-gradient(90deg, #666 1px, transparent 1px)',
+          backgroundSize: '50px 50px',
+        }} />
       </div>
 
-      {/* Header */}
       <div className="relative border-b border-gray-800 bg-black/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <button
-              onClick={() => onNavigate('landing')}
-              className="text-gray-400 hover:text-gray-200 transition-colors"
-              title="Back to Home"
-            >
-              â†  Back
+            <button onClick={() => onNavigate('landing')} className="text-gray-400 hover:text-gray-200 transition-colors" title="Back to Home">
+              ← Back
             </button>
             <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-300 via-gray-100 to-gray-400 bg-clip-text text-transparent">
               IncDrops Generator
             </h1>
           </div>
           <div className="flex items-center space-x-6">
+            <button 
+              onClick={() => setShowStats(true)}
+              className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg font-medium transition-all duration-300"
+            >
+              <TrendingUp size={18} className="inline-block mr-2" />
+              Stats
+            </button>
+            <button 
+              onClick={() => setShowHistory(true)}
+              className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg font-medium transition-all duration-300"
+            >
+              <Clock size={18} className="inline-block mr-2" />
+              History ({generationHistory.length})
+            </button>
+            <button 
+              onClick={() => setShowSavedModal(true)}
+              className="relative px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg font-medium transition-all duration-300"
+            >
+              <Heart size={18} className="inline-block mr-2" />
+              Saved ({savedIdeas.length})
+            </button>
             <div className="text-sm">
-              <span className="text-gray-400">Free Tier: </span>
-              <span className="text-gray-200 font-semibold">
-                {usageCount}/{maxFreeIdeas} ideas used
-              </span>
+              <span className="text-gray-400">{currentTier === 'free' ? 'Free Tier' : currentTier.charAt(0).toUpperCase() + currentTier.slice(1)}: </span>
+              <span className="text-gray-200 font-semibold">{usageCount}/{maxIdeas === Infinity ? '∞' : maxIdeas} used</span>
             </div>
             <button className="px-6 py-2 bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 rounded-lg font-semibold transition-all duration-300">
               Upgrade
@@ -252,65 +398,32 @@ Generate 10 ideas in this format. Keep titles under 50 characters and descriptio
         </div>
       </div>
 
-      {/* Main */}
       <div className="relative max-w-7xl mx-auto px-6 py-12">
         <div className="grid lg:grid-cols-3 gap-8">
-          {/* Left Sidebar */}
           <div className="lg:col-span-1">
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 sticky top-6">
               <h2 className="text-2xl font-bold mb-6 text-gray-100">Your Business</h2>
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">Industry *</label>
-                  <input
-                    type="text"
-                    name="industry"
-                    value={formData.industry}
-                    onChange={handleInputChange}
-                    placeholder="e.g., E-commerce, SaaS, Coaching"
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-white/30 transition-colors"
-                  />
+                  <input type="text" name="industry" value={formData.industry} onChange={handleInputChange} placeholder="e.g., E-commerce, SaaS, Coaching" className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-white/30 transition-colors" />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Target Audience *
-                  </label>
-                  <input
-                    type="text"
-                    name="targetAudience"
-                    value={formData.targetAudience}
-                    onChange={handleInputChange}
-                    placeholder="e.g., Young entrepreneurs, Busy moms"
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-white/30 transition-colors"
-                  />
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Target Audience *</label>
+                  <input type="text" name="targetAudience" value={formData.targetAudience} onChange={handleInputChange} placeholder="e.g., Young entrepreneurs, Busy moms" className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-white/30 transition-colors" />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">Services/Products</label>
-                  <textarea
-                    name="services"
-                    value={formData.services}
-                    onChange={handleInputChange}
-                    placeholder="e.g., Online courses, Consulting services"
-                    rows="3"
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-white/30 transition-colors resize-none"
-                  />
+                  <textarea name="services" value={formData.services} onChange={handleInputChange} placeholder="e.g., Online courses, Consulting services" rows="3" className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-white/30 transition-colors resize-none" />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-3">Content Type</label>
                   <div className="grid grid-cols-2 gap-2">
                     {contentTypes.map((type) => (
-                      <button
-                        key={type.id}
-                        onClick={() => setFormData({ ...formData, contentType: type.id })}
-                        className={`p-3 rounded-lg border transition-all duration-300 ${
-                          formData.contentType === type.id
-                            ? 'bg-white/10 border-white/30 text-white'
-                            : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
-                        }`}
-                      >
+                      <button key={type.id} onClick={() => setFormData({ ...formData, contentType: type.id })} className={`p-3 rounded-lg border transition-all duration-300 ${formData.contentType === type.id ? 'bg-white/10 border-white/30 text-white' : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'}`}>
                         <type.icon size={20} className="mx-auto mb-1" />
                         <div className="text-xs">{type.name}</div>
                       </button>
@@ -318,11 +431,7 @@ Generate 10 ideas in this format. Keep titles under 50 characters and descriptio
                   </div>
                 </div>
 
-                <button
-                  onClick={generateIdeas}
-                  disabled={loading || usageCount >= maxFreeIdeas}
-                  className="w-full py-4 bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 disabled:from-gray-800 disabled:to-gray-900 disabled:cursor-not-allowed rounded-lg font-semibold transition-all duration-300 flex items-center justify-center space-x-2"
-                >
+                <button onClick={generateIdeas} disabled={loading || usageCount >= maxIdeas} className="w-full py-4 bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 disabled:from-gray-800 disabled:to-gray-900 disabled:cursor-not-allowed rounded-lg font-semibold transition-all duration-300 flex items-center justify-center space-x-2">
                   {loading ? (
                     <>
                       <Loader2 className="animate-spin" size={20} />
@@ -336,83 +445,120 @@ Generate 10 ideas in this format. Keep titles under 50 characters and descriptio
                   )}
                 </button>
 
-                {usageCount >= maxFreeIdeas && (
+                {usageCount >= maxIdeas && (
                   <div className="mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-sm text-red-300">
-                    Free tier limit reached! Upgrade to continue.
+                    {currentTier === 'free' ? 'Free' : currentTier.charAt(0).toUpperCase() + currentTier.slice(1)} tier limit reached! Upgrade to continue.
                   </div>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Main Content */}
           <div className="lg:col-span-2">
-            <div className="mb-6">
-              <h2 className="text-3xl font-bold text-gray-100">Generated Ideas</h2>
-              <p className="text-gray-400 mt-2">
-                {ideas.length === 0
-                  ? 'Fill out the form and click Generate to see your content ideas'
-                  : `${ideas.length} ideas generated`}
-              </p>
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <h2 className="text-3xl font-bold text-gray-100">Generated Ideas</h2>
+                <p className="text-gray-400 mt-2">
+                  {ideas.length === 0 ? 'Fill out the form and click Generate to see your content ideas' : `${filteredAndSortedIdeas.length} of ${ideas.length} ideas`}
+                </p>
+              </div>
+              
+              {ideas.length > 0 && (
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <Filter size={16} className="text-gray-400" />
+                    <select value={filterPlatform} onChange={(e) => setFilterPlatform(e.target.value)} className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white focus:outline-none focus:border-white/30">
+                      <option value="all">All Platforms</option>
+                      {uniquePlatforms.map(platform => (
+                        <option key={platform} value={platform}>{platform}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <Clock size={16} className="text-gray-400" />
+                    <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white focus:outline-none focus:border-white/30">
+                      <option value="recent">Most Recent</option>
+                      <option value="oldest">Oldest First</option>
+                      <option value="title">Alphabetical</option>
+                    </select>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* --- NEW: Export Buttons Section --- */}
             {ideas.length > 0 && (
               <div className="flex flex-wrap gap-3 mb-6">
                 <span className="py-2 text-sm text-gray-400">Export:</span>
-                {/* CSV Download Button */}
-                <CSVLink
-                  data={csvData}
-                  headers={csvHeaders}
-                  filename="incdrops-ideas.csv"
-                  className="flex items-center space-x-2 px-4 py-2 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 rounded-lg text-sm font-medium text-gray-300 transition-colors"
-                >
+                <button onClick={handleExportCSV} className="flex items-center space-x-2 px-4 py-2 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 rounded-lg text-sm font-medium text-gray-300 transition-colors">
                   <FileDown size={16} />
                   <span>CSV</span>
-                </CSVLink>
-
-                {/* PDF Download Button */}
-                <button
-                  onClick={handleExportPDF}
-                  className="flex items-center space-x-2 px-4 py-2 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 rounded-lg text-sm font-medium text-gray-300 transition-colors"
-                >
+                </button>
+                <button onClick={handleExportText} className="flex items-center space-x-2 px-4 py-2 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 rounded-lg text-sm font-medium text-gray-300 transition-colors">
                   <FileDown size={16} />
-                  <span>PDF</span>
+                  <span>TXT</span>
                 </button>
               </div>
             )}
 
             {ideas.length === 0 ? (
               <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-12 text-center">
-                <Sparkles size={48} className="mx-auto mb-4 text-gray-500" />
-                <p className="text-gray-400 text-lg">No ideas yet. Start generating!</p>
+                <div className={loading ? 'pulse-ring' : ''}>
+                  <Sparkles size={48} className="mx-auto mb-4 text-gray-500" />
+                </div>
+                <p className="text-gray-400 text-lg">
+                  {loading ? 'Generating amazing ideas...' : 'No ideas yet. Start generating!'}
+                </p>
+              </div>
+            ) : loading ? (
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-6">
+                    <div className="skeleton h-6 w-3/4 rounded mb-4"></div>
+                    <div className="skeleton h-4 w-full rounded mb-2"></div>
+                    <div className="skeleton h-4 w-5/6 rounded mb-4"></div>
+                    <div className="flex gap-2">
+                      <div className="skeleton h-8 w-24 rounded-full"></div>
+                      <div className="skeleton h-8 w-24 rounded-full"></div>
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : (
               <div className="space-y-4">
-                {ideas.map((idea) => {
+                {filteredAndSortedIdeas.map((idea) => {
                   const platforms = Array.isArray(idea.platforms) ? idea.platforms : [];
                   const hashtags = Array.isArray(idea.hashtags) ? idea.hashtags : [];
+                  const isSaved = savedIdeas.some(s => s.id === idea.id);
+                  
                   return (
-                    <div
-                      key={idea.id}
-                      className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-6 hover:bg-white/10 hover:border-white/20 transition-all duration-300"
-                    >
+                    <div key={idea.id} className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-6 hover:bg-white/10 hover:border-white/20 transition-all duration-300 slide-up" style={{ animationDelay: `${index * 50}ms` }}>
                       <div className="flex items-start justify-between mb-3">
                         <h3 className="text-xl font-bold text-gray-100">{idea.title}</h3>
                         <div className="flex space-x-2">
-                          <button
-                            onClick={() => saveIdea(idea)}
-                            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                            title="Save idea"
+                          <button 
+                            onClick={() => saveIdea(idea)} 
+                            className={`relative p-2 hover:bg-white/10 rounded-lg transition-all duration-300 ${isSaved ? 'text-red-400' : 'text-gray-400'} ${justSavedId === idea.id ? 'success-pop' : ''}`} 
+                            title={isSaved ? "Already saved" : "Save idea"}
                           >
-                            <Heart size={18} className="text-gray-400 hover:text-red-400" />
+                            <Heart size={18} fill={isSaved ? "currentColor" : "none"} />
+                            {justSavedId === idea.id && (
+                              <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-green-500 text-white text-xs px-2 py-1 rounded whitespace-nowrap success-pop">
+                                Saved!
+                              </span>
+                            )}
                           </button>
-                          <button
-                            onClick={() => copyToClipboard(`${idea.title}\n\n${idea.description}`)}
-                            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                          <button 
+                            onClick={() => copyToClipboard(`${idea.title}\n\n${idea.description}`, idea.id)} 
+                            className="relative p-2 hover:bg-white/10 rounded-lg transition-colors" 
                             title="Copy to clipboard"
                           >
                             <Copy size={18} className="text-gray-400 hover:text-gray-200" />
+                            {copiedId === idea.id && (
+                              <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-blue-500 text-white text-xs px-2 py-1 rounded whitespace-nowrap success-pop">
+                                Copied!
+                              </span>
+                            )}
                           </button>
                         </div>
                       </div>
@@ -423,9 +569,7 @@ Generate 10 ideas in this format. Keep titles under 50 characters and descriptio
                         <div className="flex flex-wrap gap-2 mb-3">
                           <span className="text-xs text-gray-400 font-semibold">Platforms:</span>
                           {platforms.map((platform, i) => (
-                            <span key={i} className="px-3 py-1 bg-white/10 rounded-full text-xs text-gray-300">
-                              {platform}
-                            </span>
+                            <span key={i} className="px-3 py-1 bg-white/10 rounded-full text-xs text-gray-300">{platform}</span>
                           ))}
                         </div>
                       )}
@@ -433,9 +577,7 @@ Generate 10 ideas in this format. Keep titles under 50 characters and descriptio
                       {hashtags.length > 0 && (
                         <div className="flex flex-wrap gap-2">
                           {hashtags.map((tag, i) => (
-                            <span key={i} className="text-sm text-blue-400">
-                              {tag}
-                            </span>
+                            <span key={i} className="text-sm text-blue-400">{tag}</span>
                           ))}
                         </div>
                       )}
@@ -443,12 +585,8 @@ Generate 10 ideas in this format. Keep titles under 50 characters and descriptio
                   );
                 })}
 
-                <button
-                  onClick={generateIdeas}
-                  disabled={loading || usageCount >= maxFreeIdeas}
-                  className="w-full py-4 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-semibold transition-all duration-300 flex items-center justify-center space-x-2"
-                >
-                  <RefreshCw size={20} />
+                <button onClick={generateIdeas} disabled={loading || usageCount >= maxIdeas} className="w-full py-4 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-semibold transition-all duration-300 flex items-center justify-center space-x-2 hover:scale-105">
+                  <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
                   <span>Generate More Ideas</span>
                 </button>
               </div>
@@ -456,6 +594,234 @@ Generate 10 ideas in this format. Keep titles under 50 characters and descriptio
           </div>
         </div>
       </div>
+
+      {showSavedModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-6" onClick={() => setShowSavedModal(false)}>
+          <div className="bg-gray-900 border border-white/10 rounded-2xl max-w-4xl w-full max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="p-6 border-b border-white/10 flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-gray-100">Saved Ideas ({savedIdeas.length})</h2>
+              <button onClick={() => setShowSavedModal(false)} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+                <X size={24} className="text-gray-400" />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6">
+              {savedIdeas.length === 0 ? (
+                <div className="text-center py-12">
+                  <Heart size={48} className="mx-auto mb-4 text-gray-500" />
+                  <p className="text-gray-400">No saved ideas yet. Click the heart icon on any idea to save it!</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {savedIdeas.map((idea) => (
+                    <div key={idea.id} className="bg-white/5 border border-white/10 rounded-xl p-6">
+                      <div className="flex items-start justify-between mb-3">
+                        <h3 className="text-xl font-bold text-gray-100">{idea.title}</h3>
+                        <div className="flex space-x-2">
+                          <button onClick={() => removeSavedIdea(idea.id)} className="p-2 hover:bg-white/10 rounded-lg transition-all duration-300 hover:scale-110" title="Remove from saved">
+                            <X size={18} className="text-red-400" />
+                          </button>
+                          <button onClick={() => copyToClipboard(`${idea.title}\n\n${idea.description}`, idea.id)} className="relative p-2 hover:bg-white/10 rounded-lg transition-colors" title="Copy to clipboard">
+                            <Copy size={18} className="text-gray-400 hover:text-gray-200" />
+                            {copiedId === idea.id && (
+                              <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-blue-500 text-white text-xs px-2 py-1 rounded whitespace-nowrap success-pop">
+                                Copied!
+                              </span>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                      <p className="text-gray-300 mb-4">{idea.description}</p>
+                      {idea.platforms && idea.platforms.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          <span className="text-xs text-gray-400 font-semibold">Platforms:</span>
+                          {idea.platforms.map((platform, i) => (
+                            <span key={i} className="px-3 py-1 bg-white/10 rounded-full text-xs text-gray-300">{platform}</span>
+                          ))}
+                        </div>
+                      )}
+                      {idea.hashtags && idea.hashtags.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {idea.hashtags.map((tag, i) => (
+                            <span key={i} className="text-sm text-blue-400">{tag}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showHistory && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+          <div className="bg-gray-900 border border-white/10 rounded-2xl max-w-4xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+            <div className="p-6 border-b border-white/10 flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-gray-100">Generation History ({generationHistory.length})</h2>
+              <button onClick={() => setShowHistory(false)} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+                <X size={24} className="text-gray-400" />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6">
+              {generationHistory.length === 0 ? (
+                <div className="text-center py-12">
+                  <Clock size={48} className="mx-auto mb-4 text-gray-500" />
+                  <p className="text-gray-400">No generation history yet. Start generating ideas!</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {generationHistory.map((entry) => (
+                    <div key={entry.id} className="bg-white/5 border border-white/10 rounded-xl p-6 hover:bg-white/10 transition-colors">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <h3 className="text-lg font-bold text-gray-100 mb-1">{entry.industry} • {entry.audience}</h3>
+                          <p className="text-sm text-gray-400">
+                            {new Date(entry.timestamp).toLocaleDateString()} at {new Date(entry.timestamp).toLocaleTimeString()}
+                          </p>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <span className="px-3 py-1 bg-white/10 rounded-full text-xs text-gray-300 capitalize">{entry.contentType}</span>
+                          <span className="px-3 py-1 bg-blue-500/20 rounded-full text-xs text-blue-300">{entry.ideasCount} ideas</span>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => { setIdeas(entry.ideas); setShowHistory(false); }}
+                        className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
+                      >
+                        View these ideas →
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showStats && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+          <div className="bg-gray-900 border border-white/10 rounded-2xl max-w-2xl w-full overflow-hidden">
+            <div className="p-6 border-b border-white/10 flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-gray-100">Your Statistics</h2>
+              <button onClick={() => setShowStats(false)} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+                <X size={24} className="text-gray-400" />
+              </button>
+            </div>
+            
+            <div className="p-6">
+              <div className="grid grid-cols-2 gap-6">
+                <div className="bg-white/5 border border-white/10 rounded-xl p-6 text-center">
+                  <div className="text-4xl font-bold text-gray-100 mb-2">{stats.totalGenerations}</div>
+                  <div className="text-sm text-gray-400">Total Generations</div>
+                </div>
+                
+                <div className="bg-white/5 border border-white/10 rounded-xl p-6 text-center">
+                  <div className="text-4xl font-bold text-gray-100 mb-2">{stats.totalIdeas}</div>
+                  <div className="text-sm text-gray-400">Ideas Created</div>
+                </div>
+                
+                <div className="bg-white/5 border border-white/10 rounded-xl p-6 text-center">
+                  <div className="text-4xl font-bold text-gray-100 mb-2">{stats.savedCount}</div>
+                  <div className="text-sm text-gray-400">Ideas Saved</div>
+                </div>
+                
+                <div className="bg-white/5 border border-white/10 rounded-xl p-6 text-center">
+                  <div className="text-4xl font-bold text-gray-100 mb-2">{stats.remainingIdeas}</div>
+                  <div className="text-sm text-gray-400">Remaining This Month</div>
+                </div>
+              </div>
+              
+              <div className="mt-6 bg-white/5 border border-white/10 rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-gray-100 mb-3">Your Plan</h3>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-2xl font-bold text-gray-100 capitalize">{currentTier}</div>
+                    <div className="text-sm text-gray-400">
+                      {maxIdeas === Infinity ? 'Unlimited' : `${maxIdeas} ideas per month`}
+                    </div>
+                  </div>
+                  {currentTier === 'free' && (
+                    <button className="px-6 py-2 bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 rounded-lg font-semibold transition-all duration-300">
+                      Upgrade Now
+                    </button>
+                  )}
+                </div>
+              </div>
+              
+              {stats.mostUsedType !== 'N/A' && (
+                <div className="mt-4 bg-white/5 border border-white/10 rounded-xl p-6">
+                  <h3 className="text-sm font-semibold text-gray-400 mb-2">Most Used Content Type</h3>
+                  <div className="text-xl font-bold text-gray-100 capitalize">{stats.mostUsedType}</div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+          <div className="bg-gray-900 border border-white/10 rounded-2xl max-w-4xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+            <div className="p-6 border-b border-white/10 flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-gray-100">Saved Ideas ({savedIdeas.length})</h2>
+              <button onClick={() => setShowSavedModal(false)} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+                <X size={24} className="text-gray-400" />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6">
+              {savedIdeas.length === 0 ? (
+                <div className="text-center py-12">
+                  <Heart size={48} className="mx-auto mb-4 text-gray-500" />
+                  <p className="text-gray-400">No saved ideas yet. Click the heart icon on any idea to save it!</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {savedIdeas.map((idea) => (
+                    <div key={idea.id} className="bg-white/5 border border-white/10 rounded-xl p-6">
+                      <div className="flex items-start justify-between mb-3">
+                        <h3 className="text-xl font-bold text-gray-100">{idea.title}</h3>
+                        <div className="flex space-x-2">
+                          <button onClick={() => removeSavedIdea(idea.id)} className="p-2 hover:bg-white/10 rounded-lg transition-all duration-300 hover:scale-110" title="Remove from saved">
+                            <X size={18} className="text-red-400" />
+                          </button>
+                          <button onClick={() => copyToClipboard(`${idea.title}\n\n${idea.description}`, idea.id)} className="relative p-2 hover:bg-white/10 rounded-lg transition-colors" title="Copy to clipboard">
+                            <Copy size={18} className="text-gray-400 hover:text-gray-200" />
+                            {copiedId === idea.id && (
+                              <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-blue-500 text-white text-xs px-2 py-1 rounded whitespace-nowrap success-pop">
+                                Copied!
+                              </span>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                      <p className="text-gray-300 mb-4">{idea.description}</p>
+                      {idea.platforms && idea.platforms.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          <span className="text-xs text-gray-400 font-semibold">Platforms:</span>
+                          {idea.platforms.map((platform, i) => (
+                            <span key={i} className="px-3 py-1 bg-white/10 rounded-full text-xs text-gray-300">{platform}</span>
+                          ))}
+                        </div>
+                      )}
+                      {idea.hashtags && idea.hashtags.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {idea.hashtags.map((tag, i) => (
+                            <span key={i} className="text-sm text-blue-400">{tag}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
